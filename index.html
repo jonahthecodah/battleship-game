@@ -3,42 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1726">
+<meta name="theme-color" content="#060e1a">
 <title>Battleship</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230ea5e9'/%3E%3Cpath d='M10 36h44l-6 10H16z' fill='white'/%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #0b1726;
-    --bg2: #102238;
-    --surface: #14283f;
-    --surface-2: #1a3250;
-    --border: rgba(255,255,255,0.10);
-    --text: #eef4fb;
-    --muted: #9fb3c8;
+    --bg: #060e1a;
+    --surface: #0f1d2e;
+    --surface-2: #16283d;
+    --border: rgba(140, 200, 255, 0.13);
+    --text: #e6eef7;
+    --muted: #8ea3b9;
+    --cyan: #3fd0ff;
     --accent: #38bdf8;
     --accent-strong: #0ea5e9;
-    --water: #1d4f7a;
-    --water-2: #1a466e;
-    --ship: #9aa9bb;
-    --ship-edge: #c9d4e0;
-    --hit: #ef4444;
-    --sunk: #7f1d1d;
+    --amber: #ffb347;
+    --hit: #ff5a36;
+    --sunk: #c0262d;
     --good: #22c55e;
-    --bad: #f43f5e;
     --radius: 14px;
     --board-size: min(92vw, 520px);
     --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
+  html { overflow-x: clip; }
   body {
     font-family: var(--font);
     color: var(--text);
-    background: radial-gradient(1200px 700px at 50% -10%, #17365a 0%, var(--bg) 60%) fixed, var(--bg);
+    background:
+      radial-gradient(1100px 600px at 50% -8%, rgba(32, 92, 140, 0.55), transparent 65%),
+      radial-gradient(900px 500px at 50% 110%, rgba(10, 40, 70, 0.6), transparent 70%),
+      var(--bg);
+    background-attachment: fixed;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
+    overflow-x: clip;
   }
   button { font: inherit; color: inherit; }
 
@@ -49,6 +52,7 @@
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand svg { width: 34px; height: 34px; }
   h1 { font-size: 1.45rem; margin: 0; letter-spacing: 0.02em; }
+  .header-actions { display: flex; gap: 8px; }
 
   .btn {
     border: 1px solid var(--border); background: var(--surface-2);
@@ -62,10 +66,9 @@
   .btn.primary { background: var(--accent-strong); border-color: transparent; color: #04131f; }
   .btn.primary:hover:not(:disabled) { background: var(--accent); }
   .btn.ghost { background: transparent; }
+  .btn.demo-open { border-color: rgba(255, 179, 71, .5); color: #ffd59a; }
 
-  .status {
-    max-width: 1200px; margin: 0 auto 12px; padding: 0 20px;
-  }
+  .status { max-width: 1200px; margin: 0 auto 12px; padding: 0 20px; }
   .status-inner {
     display: flex; align-items: center; justify-content: center; gap: 10px;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -77,94 +80,209 @@
   .status[data-turn="over"] .dot { background: var(--accent); }
   .last-action { text-align: center; color: var(--muted); font-size: .95rem; min-height: 1.4em; margin-top: 6px; }
   .last-action:empty { display: none; }
-  .last-action b.hit { color: #fca5a5; } .last-action b.miss { color: #cbd5e1; } .last-action b.sunk { color: #fb7185; }
+  .last-action b.hit { color: #ffb199; } .last-action b.miss { color: #cfe6f5; } .last-action b.sunk { color: #ff7a6b; }
 
   main {
-    max-width: 1200px; margin: 0 auto; padding: 0 20px 24px;
+    max-width: 1200px; margin: 0 auto; padding: 0 20px 24px; overflow-x: clip; overflow-clip-margin: 20px;
     display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px;
   }
 
-  .panel, .board-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 12px;
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px;
   }
+
+  /* ---------- Battle station cards ---------- */
+  .board-card {
+    position: relative; padding: 12px; border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(24, 42, 62, .95), rgba(10, 20, 33, .95));
+    border: 1px solid rgba(120, 190, 240, .16);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .05);
+    transition: box-shadow .3s, border-color .3s;
+  }
+  .board-card::before {
+    content: ""; position: absolute; left: 18px; right: 18px; top: -1px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, rgba(63, 208, 255, .55), transparent); opacity: .5; transition: opacity .3s;
+  }
+  .board-card.active { border-color: rgba(63, 208, 255, .45); box-shadow: 0 0 0 1px rgba(63,208,255,.25), 0 0 36px rgba(63, 208, 255, .12), 0 18px 50px rgba(0,0,0,.5); }
+  .board-card.active::before { opacity: 1; }
   #enemy-card { --bsize: var(--enemy-size, var(--board-size)); }
   #player-card { --bsize: var(--player-size, var(--board-size)); }
-  .board-card { transition: box-shadow .25s, border-color .25s; }
-  .board-card.active { border-color: rgba(56,189,248,.6); box-shadow: 0 0 0 3px rgba(56,189,248,.18), 0 10px 30px rgba(0,0,0,.3); }
-  .board-card h2, .panel h2 { margin: 0; font-size: 1.05rem; }
   .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-  .board-card .sub { margin: 0; color: var(--muted); font-size: .85rem; text-align: right; }
+  .board-card h2 { margin: 0; font-size: .82rem; letter-spacing: .2em; text-transform: uppercase; color: #cfe9ff; }
+  .board-card .sub { margin: 0; color: var(--muted); font-size: .82rem; text-align: right; }
+  .panel h2 { margin: 0; font-size: 1.05rem; }
 
-  /* ---------- Board ---------- */
+  /* ---------- Battlefield ---------- */
   .board {
+    --lab: calc(var(--bsize) / 11);
     width: var(--bsize); aspect-ratio: 1;
-    display: grid; grid-template-columns: repeat(11, 1fr); grid-template-rows: repeat(11, 1fr);
-    gap: 2px;
+    display: grid; grid-template-columns: var(--lab) 1fr; grid-template-rows: var(--lab) 1fr;
   }
-  .label {
+  .cols { display: grid; grid-template-columns: repeat(10, 1fr); }
+  .rows { display: grid; grid-template-rows: repeat(10, 1fr); }
+  .cols span, .rows span {
     display: flex; align-items: center; justify-content: center;
-    color: var(--muted); font-size: calc(var(--bsize) / 30); font-weight: 600;
+    font: 700 calc(var(--bsize) / 31) var(--mono); color: rgba(160, 225, 255, .85);
+    text-shadow: 0 0 8px rgba(63, 208, 255, .35);
   }
-  .cell {
-    position: relative; border-radius: 4px;
-    background: linear-gradient(160deg, var(--water), var(--water-2));
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  .field { position: relative; }
+  .field::before { /* tactical corner brackets */
+    content: ""; position: absolute; inset: -5px; pointer-events: none; z-index: 5;
+    --b: rgba(63, 208, 255, .75); --l: 14px;
+    background:
+      linear-gradient(var(--b), var(--b)) top left / var(--l) 2px no-repeat,
+      linear-gradient(var(--b), var(--b)) top left / 2px var(--l) no-repeat,
+      linear-gradient(var(--b), var(--b)) top right / var(--l) 2px no-repeat,
+      linear-gradient(var(--b), var(--b)) top right / 2px var(--l) no-repeat,
+      linear-gradient(var(--b), var(--b)) bottom left / var(--l) 2px no-repeat,
+      linear-gradient(var(--b), var(--b)) bottom left / 2px var(--l) no-repeat,
+      linear-gradient(var(--b), var(--b)) bottom right / var(--l) 2px no-repeat,
+      linear-gradient(var(--b), var(--b)) bottom right / 2px var(--l) no-repeat;
   }
+
+  /* Ocean: layered, seamlessly tiling textures that drift (GPU-friendly transforms only) */
+  .ocean {
+    position: absolute; inset: 0; overflow: hidden; border-radius: 6px; z-index: 0;
+    background: radial-gradient(130% 100% at 30% 15%, #1d5f86 0%, #114166 40%, #0a2a48 75%, #071d35 100%);
+    box-shadow: inset 0 0 0 1px rgba(63, 208, 255, .35), 0 0 0 1px rgba(0, 0, 0, .5), 0 12px 30px rgba(0, 0, 0, .55);
+  }
+  .ocean i { position: absolute; left: 0; top: 0; width: 200%; height: 200%; pointer-events: none; will-change: transform; }
+  .ocean .water   { background-image: var(--tex-water); background-size: 25% 25%; mix-blend-mode: overlay; opacity: .7; animation: drift-a 60s linear infinite; }
+  .ocean .caustic { background-image: var(--tex-caustic); background-size: 25% 25%; mix-blend-mode: screen; opacity: .16; animation: drift-b 26s linear infinite; }
+  .ocean .caustic.two { background-size: 20% 20%; opacity: .10; animation: drift-c 34s linear infinite; }
+  .ocean .swell {
+    background: linear-gradient(45deg, transparent 0 38%, rgba(190, 235, 255, .07) 50%, transparent 62%) 0 0 / 25% 25%;
+    animation: drift-d 14s linear infinite;
+  }
+  .ocean .clouds {
+    background:
+      radial-gradient(closest-side, rgba(2, 10, 24, .55), transparent) 10% 20% / 30% 26% no-repeat,
+      radial-gradient(closest-side, rgba(2, 10, 24, .45), transparent) 70% 65% / 34% 28% no-repeat,
+      radial-gradient(closest-side, rgba(2, 10, 24, .35), transparent) 35% 85% / 22% 18% no-repeat;
+    opacity: .55; animation: drift-e 90s linear infinite alternate;
+  }
+  .ocean::after { /* atmospheric light + vignette */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(70% 55% at 22% 12%, rgba(150, 225, 255, .16), transparent 60%),
+      radial-gradient(85% 85% at 50% 50%, transparent 55%, rgba(1, 8, 20, .6) 100%);
+  }
+  @keyframes drift-a { from { transform: translate(0, 0); } to { transform: translate(-25%, -25%); } }
+  @keyframes drift-b { from { transform: translate(-25%, 0); } to { transform: translate(0, -25%); } }
+  @keyframes drift-c { from { transform: translate(0, -20%); } to { transform: translate(-20%, 0); } }
+  @keyframes drift-d { from { transform: translate(0, 0); } to { transform: translate(-25%, -25%); } }
+  @keyframes drift-e { from { transform: translate(0, 0); } to { transform: translate(-30%, -20%); } }
+
+  /* Ships */
+  .ships { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .ship-el {
+    position: absolute;
+    left: calc(var(--c) * 10%); top: calc(var(--r) * 10%);
+    width: calc(var(--w) * 10%); height: calc(var(--h) * 10%);
+  }
+  .ship-body { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .ship-body svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+  .dmg { position: absolute; pointer-events: none; }
+  .ship-el.h .dmg { top: 0; height: 100%; width: calc(100% / var(--n)); left: calc(var(--i) * 100% / var(--n)); }
+  .ship-el.v .dmg { left: 0; width: 100%; height: calc(100% / var(--n)); top: calc(var(--i) * 100% / var(--n)); }
+  .dmg::before { /* scorched, torn plating */
+    content: ""; position: absolute; inset: 8%;
+    background:
+      radial-gradient(circle at 42% 46%, rgba(255, 196, 110, .95) 0 5%, rgba(255, 110, 40, .75) 10%, rgba(40, 18, 10, .92) 20%, rgba(18, 12, 10, .85) 32%, transparent 48%),
+      radial-gradient(circle at 66% 62%, rgba(20, 14, 12, .8) 0 14%, transparent 30%),
+      radial-gradient(circle at 30% 70%, rgba(20, 14, 12, .65) 0 10%, transparent 24%);
+  }
+  .dmg::after { /* glowing embers */
+    content: ""; position: absolute; inset: 22%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 140, 50, .55), transparent 65%);
+    animation: ember 1.3s ease-in-out infinite alternate;
+  }
+  .ship-el.sinking .ship-body { animation: sink 1.9s cubic-bezier(.55, 0, .8, .3) .6s forwards; }
+  .ship-el.sunk .ship-body,
+  .ship-el.sinking.done .ship-body {
+    transform: rotate(-5deg) scale(.86);
+    filter: sepia(.45) hue-rotate(165deg) saturate(.75) brightness(.58) blur(.4px);
+    opacity: .78;
+  }
+  .ship-el.sunk .dmg::after { display: none; }
+  .ship-el.sunk::after, .ship-el.sinking::after {
+    content: ""; position: absolute; inset: 3px; border-radius: 6px; pointer-events: none;
+    border: 1.5px solid rgba(255, 90, 70, .75); box-shadow: inset 0 0 14px rgba(255, 60, 40, .25), 0 0 10px rgba(255, 60, 40, .25);
+  }
+  .ship-el.sinking::after { opacity: 0; animation: fade-in .6s ease 2.1s forwards; }
+  .ship-el.revealed .ship-body { opacity: .72; filter: drop-shadow(0 0 4px rgba(63, 208, 255, .55)); }
+  .ship-el.ghost .ship-body { opacity: .62; }
+  .ship-el.ghost.bad .ship-body { filter: sepia(1) hue-rotate(-50deg) saturate(5) brightness(.75); opacity: .55; }
+  @keyframes sink {
+    0%   { transform: none; filter: none; opacity: 1; }
+    20%  { transform: rotate(-1.5deg) scale(.99); filter: brightness(.75); opacity: 1; }
+    100% { transform: rotate(-5deg) scale(.86); filter: sepia(.45) hue-rotate(165deg) saturate(.75) brightness(.58) blur(.4px); opacity: .78; }
+  }
+  @keyframes ember { from { opacity: .45; transform: scale(.85); } to { opacity: 1; transform: scale(1.1); } }
+  @keyframes fade-in { to { opacity: 1; } }
+
+  /* Grid cells (interactive layer on top of the ships) */
+  .cells { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); border-radius: 6px; overflow: hidden; }
+  .cell { position: relative; box-shadow: inset -1px -1px 0 rgba(120, 210, 255, .11); }
   .cell::before, .cell::after { content: ""; position: absolute; pointer-events: none; }
-
-  /* Ships (drawn as one connected hull) */
-  .cell.ship::before {
-    inset: 16% -2px; background: linear-gradient(180deg, var(--ship-edge), var(--ship));
-    box-shadow: inset 0 -2px 0 rgba(0,0,0,.18);
-  }
-  .cell.ship.v::before { inset: -2px 16%; background: linear-gradient(90deg, var(--ship-edge), var(--ship)); }
-  .cell.ship.h.start::before { left: 10%; border-radius: 999px 0 0 999px; }
-  .cell.ship.h.end::before   { right: 10%; border-radius: 0 999px 999px 0; }
-  .cell.ship.v.start::before { top: 10%; border-radius: 999px 999px 0 0; }
-  .cell.ship.v.end::before   { bottom: 10%; border-radius: 0 0 999px 999px; }
-
-  /* Miss: white splash dot */
   .cell.miss::after {
-    width: 26%; height: 26%; left: 37%; top: 37%; border-radius: 50%;
-    background: rgba(235,245,255,.85); box-shadow: 0 0 0 4px rgba(235,245,255,.12);
+    inset: 20%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(235, 248, 255, .95) 0 13%, transparent 16% 30%, rgba(200, 236, 255, .55) 33%, transparent 39%);
   }
-  /* Hit: fiery burst */
-  .cell.hit { background: linear-gradient(160deg, #5a2330, #47202d); }
   .cell.hit::after {
-    width: 52%; height: 52%; left: 24%; top: 24%; border-radius: 50%;
-    background: radial-gradient(circle, #fde68a 0 18%, #fb923c 40%, var(--hit) 70%);
-    box-shadow: 0 0 10px 2px rgba(239,68,68,.55);
+    inset: 6%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 214, 140, .95) 0 7%, rgba(255, 110, 45, .8) 15%, rgba(200, 45, 20, .45) 27%, rgba(25, 10, 5, .55) 40%, transparent 60%);
+    animation: ember 1.4s ease-in-out infinite alternate;
   }
-  /* Sunk: whole ship turns dark red with an X */
-  .cell.sunk { background: linear-gradient(160deg, #3a1219, #2c0f15); }
-  .cell.sunk::before { background: linear-gradient(180deg, #b91c1c, var(--sunk)) !important; }
-  .cell.sunk::after {
-    content: "\2715"; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #fecaca; font-weight: 800; font-size: calc(var(--bsize) / 22); text-shadow: 0 1px 2px rgba(0,0,0,.6);
-    background: none; box-shadow: none; width: auto; height: auto;
+  .cell.sunk { background: rgba(190, 30, 30, .13); }
+  .cell.last::before, .cell.locked::before {
+    inset: 7%; --k: var(--amber);
+    background:
+      linear-gradient(var(--k), var(--k)) top left / 30% 2px no-repeat, linear-gradient(var(--k), var(--k)) top left / 2px 30% no-repeat,
+      linear-gradient(var(--k), var(--k)) top right / 30% 2px no-repeat, linear-gradient(var(--k), var(--k)) top right / 2px 30% no-repeat,
+      linear-gradient(var(--k), var(--k)) bottom left / 30% 2px no-repeat, linear-gradient(var(--k), var(--k)) bottom left / 2px 30% no-repeat,
+      linear-gradient(var(--k), var(--k)) bottom right / 30% 2px no-repeat, linear-gradient(var(--k), var(--k)) bottom right / 2px 30% no-repeat;
+    opacity: .9;
   }
-  /* Enemy ships revealed at the end of the game */
-  .cell.revealed::before { background: linear-gradient(180deg, #7d91a8, #63778d); }
-  .cell.revealed.v::before { background: linear-gradient(90deg, #7d91a8, #63778d); }
+  .cell.locked::before { --k: #ff5a36; animation: lock .5s ease-in-out infinite alternate; }
+  .cell.locked { background: rgba(255, 90, 54, .16); }
+  @keyframes lock { from { transform: scale(1.15); opacity: .6; } to { transform: scale(.9); opacity: 1; } }
 
-  .cell.last { outline: 2px solid #fde047; outline-offset: -2px; z-index: 1; }
-  .cell.anim::after { animation: pop .35s ease-out; }
-  .cell.sunk.anim::after { animation: none; }
-
-  /* Clickable target squares */
   .board.targetable .cell.open { cursor: crosshair; }
-  .board.targetable .cell.open:hover { background: linear-gradient(160deg, #2b6aa1, #255f91); box-shadow: inset 0 0 0 2px rgba(56,189,248,.8); }
-
-  /* Placement preview */
+  .board.targetable .cell.open:hover { background: rgba(63, 208, 255, .16); box-shadow: inset 0 0 0 1.5px rgba(63, 208, 255, .8); }
   .board.placing .cell { cursor: pointer; }
-  .cell.preview-ok  { background: linear-gradient(160deg, #1f7a4f, #1b6b45); box-shadow: inset 0 0 0 2px rgba(34,197,94,.9); }
-  .cell.preview-bad { background: linear-gradient(160deg, #7a1f33, #6b1b2d); box-shadow: inset 0 0 0 2px rgba(244,63,94,.9); }
-  .board.shake { animation: shake .3s; }
+  .cell.preview-ok  { background: rgba(34, 197, 94, .20); box-shadow: inset 0 0 0 1.5px rgba(34, 197, 94, .8); }
+  .cell.preview-bad { background: rgba(244, 63, 94, .22); box-shadow: inset 0 0 0 1.5px rgba(244, 63, 94, .85); }
+  .board.shake-bad { animation: shake-s .3s; }
 
-  @keyframes pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @keyframes pulse { 50% { opacity: .4; } }
-  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  /* Effects canvas sits above everything on the board and spills past its edges */
+  .fx { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; z-index: 3; pointer-events: none; }
+  #fx-global { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 40; pointer-events: none; }
+
+  .banner {
+    position: absolute; left: 50%; top: 50%; z-index: 4; pointer-events: none;
+    transform: translate(-50%, -50%); opacity: 0; white-space: nowrap;
+    padding: .55em 1.1em; border-radius: 6px;
+    background: linear-gradient(180deg, rgba(90, 12, 12, .92), rgba(50, 6, 6, .92));
+    border: 1px solid rgba(255, 100, 80, .8); box-shadow: 0 0 30px rgba(255, 50, 30, .35);
+    color: #ffe1da; font: 800 calc(var(--bsize) / 26) var(--font); letter-spacing: .16em; text-transform: uppercase;
+  }
+  .banner.show { animation: banner 2.4s ease forwards; }
+  @keyframes banner {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+    10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(.96); }
+  }
+
+  /* Screen shake */
+  .shake-s { animation: shake-s .32s linear; }
+  .shake-l { animation: shake-l .6s linear; }
+  @keyframes shake-s { 20% { transform: translate(-3px, 2px); } 40% { transform: translate(3px, -2px); } 60% { transform: translate(-2px, -1px); } 80% { transform: translate(2px, 1px); } }
+  @keyframes shake-l {
+    10% { transform: translate(-7px, 3px) rotate(-.3deg); } 25% { transform: translate(6px, -4px) rotate(.3deg); }
+    40% { transform: translate(-5px, -2px); } 55% { transform: translate(4px, 3px); } 70% { transform: translate(-3px, 1px); } 85% { transform: translate(2px, -1px); }
+  }
 
   /* ---------- Fleet status ---------- */
   .fleet { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-width: var(--bsize); }
@@ -174,7 +292,7 @@
     background: var(--surface-2); border: 1px solid var(--border); font-size: .74rem; font-weight: 600;
   }
   .chip .pips { display: inline-flex; gap: 2px; }
-  .chip .pips i { width: 6px; height: 6px; border-radius: 2px; background: var(--ship); display: block; }
+  .chip .pips i { width: 6px; height: 6px; border-radius: 2px; background: #9aa9bb; display: block; }
   .chip .pips i.h { background: var(--hit); }
   .chip.sunk { opacity: .55; text-decoration: line-through; }
   .chip.sunk .pips i { background: var(--sunk); }
@@ -191,15 +309,15 @@
   .ship-btn .name { font-weight: 600; }
   .ship-btn .size { color: var(--muted); font-size: .85rem; margin-left: 6px; font-weight: 500; }
   .ship-btn .pips { display: inline-flex; gap: 3px; }
-  .ship-btn .pips i { width: 14px; height: 14px; border-radius: 3px; background: var(--ship); display: block; }
+  .ship-btn .pips i { width: 14px; height: 14px; border-radius: 3px; background: #9aa9bb; display: block; }
   .ship-btn.selected { border-color: var(--accent); background: #1d3b5f; }
   .ship-btn.placed { opacity: .6; }
   .ship-btn .done { display: none; color: var(--good); font-size: .85rem; font-weight: 600; margin-left: 6px; }
   .ship-btn.placed .done { display: inline; }
   .ship-btn.placed .size { display: none; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .controls { display: flex; flex-direction: column; gap: 12px; }
   .row .btn { flex: 1 1 auto; }
+  .controls { display: flex; flex-direction: column; gap: 12px; }
   .seg { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; border: 1px solid var(--border); }
   .seg button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--muted); min-height: 40px; }
   .seg button.on { background: var(--accent-strong); color: #04131f; }
@@ -209,11 +327,15 @@
   /* ---------- Legend ---------- */
   .legend { width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: .88rem; }
   .legend span { display: inline-flex; align-items: center; gap: 8px; }
-  .legend .cell { width: 22px; height: 22px; display: inline-block; --bsize: 330px; }
+  .sw { position: relative; width: 24px; height: 24px; border-radius: 4px; display: inline-block; background: radial-gradient(circle at 30% 20%, #1d5f86, #0a2a48); box-shadow: inset 0 0 0 1px rgba(63,208,255,.35); }
+  .sw::after { content: ""; position: absolute; }
+  .sw.miss::after { inset: 20%; border-radius: 50%; background: radial-gradient(circle, rgba(235,248,255,.95) 0 13%, transparent 16% 30%, rgba(200,236,255,.55) 33%, transparent 39%); }
+  .sw.hit::after { inset: 4%; border-radius: 50%; background: radial-gradient(circle, rgba(255,214,140,.95) 0 7%, rgba(255,110,45,.8) 15%, rgba(200,45,20,.45) 27%, rgba(25,10,5,.55) 40%, transparent 60%); }
+  .sw.sunk { background: radial-gradient(circle at 30% 20%, #3a2a36, #1a0f18); box-shadow: inset 0 0 0 1.5px rgba(255,90,70,.75); }
 
-  /* ---------- Modal ---------- */
+  /* ---------- Modals ---------- */
   .modal {
-    position: fixed; inset: 0; background: rgba(3,10,20,.7); backdrop-filter: blur(4px);
+    position: fixed; inset: 0; background: rgba(3, 9, 18, .82);
     display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10;
   }
   .modal.hidden { display: none; }
@@ -230,23 +352,41 @@
   .stats div { background: var(--surface-2); border-radius: 10px; padding: 10px 6px; }
   .stats b { display: block; font-size: 1.3rem; }
   .stats small { color: var(--muted); }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes pulse { 50% { opacity: .4; } }
+
+  /* Temporary animation demo */
+  .demo-card {
+    position: relative; width: min(96vw, 560px); max-height: 98dvh; overflow: auto;
+    background: linear-gradient(180deg, rgba(24, 42, 62, .98), rgba(10, 20, 33, .98));
+    border: 1px solid rgba(255, 179, 71, .45); border-radius: 18px; padding: 14px 16px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  .demo-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .demo-head h2 { margin: 2px 0 0; font-size: 1.15rem; }
+  .demo-tag { font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #1a1205; background: var(--amber); padding: 2px 8px; border-radius: 999px; }
+  .demo-note { margin: 0; color: var(--muted); font-size: .88rem; text-align: center; }
+  #demo-board { --bsize: min(86vw, calc(100dvh - 300px), 440px); }
+  .demo-btns { width: 100%; }
+  .demo-btns .btn { flex: 1 1 0; font-weight: 800; letter-spacing: .08em; min-height: 52px; }
+  .demo-btns .hit { background: linear-gradient(180deg, #c2410c, #9a2f07); border-color: rgba(255,150,90,.5); }
+  .demo-btns .miss { background: linear-gradient(180deg, #0e7490, #0b5a70); border-color: rgba(120,220,255,.5); }
+  .demo-btns .sink { background: linear-gradient(180deg, #991b1b, #6d1111); border-color: rgba(255,110,110,.5); }
+  body.demo-open .board:not(#demo-board) .ocean i { animation-play-state: paused; }
 
   .hidden { display: none !important; }
 
   /* Board sizes: fit everything on a tablet screen without scrolling */
   body.setup { --board-size: min(92vw, calc(100dvh - 190px), 520px); }
-  /* Portrait: big enemy board on top, smaller view of your own fleet below */
   body.battle {
     --enemy-size: min(92vw, calc((100dvh - 370px) * 0.62), 560px);
     --player-size: min(92vw, calc((100dvh - 370px) * 0.38), 400px);
   }
   @media (orientation: portrait) { body.battle #player-fleet { display: none; } }
-  /* Landscape: both boards side by side, same size */
   @media (orientation: landscape) and (min-width: 700px) {
     body.battle { --enemy-size: var(--board-size); --player-size: var(--board-size);
       --board-size: min(calc((100vw - 130px) / 2), calc(100dvh - 270px), 540px); }
   }
-  /* Narrow screens during setup: compact controls above the board */
   @media (max-width: 860px) {
     body.setup { --board-size: min(92vw, max(300px, calc(100dvh - 590px)), 520px); }
     .panel { width: min(92vw, 560px); }
@@ -255,29 +395,70 @@
     .ship-btn .name { font-size: .9rem; }
     .ship-btn .size, .ship-btn .done-word { display: none; }
     .seg button { font-size: .9rem; }
-    .ship-btn .pips i { width: 10px; height: 10px; }
     .panel .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   }
-  /* Phones: enemy board fills the screen, scroll down to see your fleet */
   @media (max-width: 600px) {
     body.battle { --enemy-size: min(92vw, calc(100dvh - 250px)); --player-size: min(80vw, 320px); }
     .seg button { font-size: .85rem; padding: 6px; }
     body.setup #player-sub { display: none; }
     .board-card { margin: 0 auto; }
+    .btn.demo-open .long { display: none; }
   }
   @media (max-width: 520px) {
     header { padding: 12px 14px; } main { padding: 0 12px 24px; gap: 14px; } .status { padding: 0 12px; }
-    .board-card, .panel { padding: 12px; } h1 { font-size: 1.2rem; }
+    .board-card, .panel { padding: 10px; } h1 { font-size: 1.2rem; }
+    .btn { padding: 8px 12px; }
   }
+
+  /* Respect "reduce motion": no drifting water, no shaking, no sinking motion */
+  @media (prefers-reduced-motion: reduce) {
+    .ocean i, .dmg::after, .cell.hit::after, .cell.locked::before, .status .dot { animation: none !important; }
+    .ship-el.sinking .ship-body { animation: none; }
+    .ship-el.sinking::after { animation: none; opacity: 1; }
+    .ship-el.sinking .ship-body { transform: rotate(-5deg) scale(.86); filter: sepia(.45) hue-rotate(165deg) saturate(.75) brightness(.58) blur(.4px); opacity: .78; }
+    .shake-s, .shake-l, .board.shake-bad { animation: none !important; }
+    .banner.show { animation: banner-fade 2s ease forwards; }
+    .modal-card { animation: none; }
+  }
+  @keyframes banner-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 </style>
 </head>
 <body class="setup">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="g-hull" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#c6cfd8"/><stop offset=".16" stop-color="#93a0ad"/><stop offset=".55" stop-color="#6b7886"/><stop offset="1" stop-color="#36404b"/>
+      </linearGradient>
+      <linearGradient id="g-deck" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#7f8b97"/><stop offset="1" stop-color="#55606b"/>
+      </linearGradient>
+      <linearGradient id="g-flight" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#525b66"/><stop offset="1" stop-color="#363d46"/>
+      </linearGradient>
+      <linearGradient id="g-dark" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#55606c"/><stop offset="1" stop-color="#2b333c"/>
+      </linearGradient>
+      <linearGradient id="g-light" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e3e9ef"/><stop offset="1" stop-color="#97a3af"/>
+      </linearGradient>
+      <radialGradient id="g-turret" cx=".38" cy=".32" r=".75">
+        <stop offset="0" stop-color="#c3ccd5"/><stop offset=".6" stop-color="#7c8895"/><stop offset="1" stop-color="#46505b"/>
+      </radialGradient>
+      <linearGradient id="g-sub" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#5a6570"/><stop offset=".35" stop-color="#2d353e"/><stop offset="1" stop-color="#13181e"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
   <header>
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#0ea5e9" opacity=".18"/><path d="M10 38h44l-6 10H16z" fill="#c9d4e0"/><rect x="24" y="28" width="16" height="10" rx="2" fill="#9aa9bb"/><rect x="30" y="18" width="3" height="10" fill="#9aa9bb"/><path d="M6 50c4 0 4 3 8 3s4-3 8-3 4 3 8 3 4-3 8-3 4 3 8 3 4-3 8-3 4 3 8 3" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
       <h1>Battleship</h1>
     </div>
-    <button class="btn ghost" id="new-game-btn">New game</button>
+    <div class="header-actions">
+      <button class="btn demo-open" id="demo-btn">&#9654; <span class="long">Animation </span>demo</button>
+      <button class="btn ghost" id="new-game-btn">New game</button>
+    </div>
   </header>
 
   <div class="status" id="status" data-turn="setup">
@@ -285,7 +466,7 @@
     <div class="last-action" id="last-action"></div>
   </div>
 
-  <main>
+  <main id="main">
     <section class="panel" id="setup-panel">
       <div>
         <h2>Place your fleet</h2>
@@ -293,20 +474,20 @@
       </div>
       <div class="ship-list" id="ship-list"></div>
       <div class="controls">
-      <div>
-        <div class="field-label">Direction</div>
-        <div class="seg" id="dir-seg">
-          <button data-dir="h" class="on">&#8596; Horizontal</button>
-          <button data-dir="v">&#8597; Vertical</button>
+        <div>
+          <div class="field-label">Direction</div>
+          <div class="seg" id="dir-seg">
+            <button data-dir="h" class="on">&#8596; Horizontal</button>
+            <button data-dir="v">&#8597; Vertical</button>
+          </div>
         </div>
-      </div>
-      <div>
-        <div class="field-label">Computer skill</div>
-        <div class="seg" id="skill-seg">
-          <button data-skill="easy">Easy</button>
-          <button data-skill="smart" class="on">Smart</button>
+        <div>
+          <div class="field-label">Computer skill</div>
+          <div class="seg" id="skill-seg">
+            <button data-skill="easy">Easy</button>
+            <button data-skill="smart" class="on">Smart</button>
+          </div>
         </div>
-      </div>
       </div>
       <div class="row">
         <button class="btn" id="random-btn">Place randomly</button>
@@ -328,10 +509,10 @@
     </section>
 
     <div class="legend" id="legend">
-      <span><i class="cell"></i>Water</span>
-      <span><i class="cell miss"></i>Miss</span>
-      <span><i class="cell hit"></i>Hit</span>
-      <span><i class="cell ship h start end sunk"></i>Sunk ship</span>
+      <span><i class="sw"></i>Water</span>
+      <span><i class="sw miss"></i>Miss</span>
+      <span><i class="sw hit"></i>Hit</span>
+      <span><i class="sw sunk"></i>Sunk ship</span>
     </div>
   </main>
 
@@ -348,6 +529,24 @@
     </div>
   </div>
 
+  <div class="modal hidden" id="demo" role="dialog" aria-modal="true" aria-label="Animation demo">
+    <div class="demo-card">
+      <div class="demo-head">
+        <div><span class="demo-tag">Temporary</span><h2>Animation demo</h2></div>
+        <button class="btn ghost" id="demo-close">Close</button>
+      </div>
+      <p class="demo-note">A practice board. Nothing here affects your game.</p>
+      <div class="board" id="demo-board" aria-label="Practice board"></div>
+      <div class="row demo-btns">
+        <button class="btn hit" data-demo="hit">HIT</button>
+        <button class="btn miss" data-demo="miss">MISS</button>
+        <button class="btn sink" data-demo="sink">SINK SHIP</button>
+      </div>
+      <button class="btn ghost" id="demo-reset">Reset practice board</button>
+    </div>
+  </div>
+
+  <canvas id="fx-global" aria-hidden="true"></canvas>
 <script>
 (() => {
   "use strict";
@@ -361,7 +560,7 @@
     { name: "Submarine", size: 3 },
     { name: "Destroyer", size: 2 },
   ];
-  const COMPUTER_DELAY = 750;
+  const COMPUTER_DELAY = 550;
 
   // ---------- Game rules (no screen code here) ----------
   const key = (r, c) => r * SIZE + c;
@@ -481,26 +680,536 @@
     return pick(bestList);
   }
 
-  // ---------- Game state ----------
+  // ======================================================================
+  //  Ocean textures (generated once, then drifted with GPU transforms)
+  // ======================================================================
+  function periodicNoise(n, seed) {
+    let s = seed;
+    const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const g = new Float32Array(n * n);
+    for (let i = 0; i < g.length; i++) g[i] = rnd();
+    return (x, y) => {
+      const fx = x * n, fy = y * n;
+      const x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const tx = fx - x0, ty = fy - y0;
+      const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+      const i0 = ((x0 % n) + n) % n, i1 = (i0 + 1) % n, j0 = ((y0 % n) + n) % n, j1 = (j0 + 1) % n;
+      const a = g[j0 * n + i0], b = g[j0 * n + i1], c = g[j1 * n + i0], d = g[j1 * n + i1];
+      return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+    };
+  }
+
+  function makeOceanTextures() {
+    const S = 256;
+    const water = document.createElement("canvas"), caustic = document.createElement("canvas");
+    water.width = water.height = caustic.width = caustic.height = S;
+    const wctx = water.getContext("2d"), cctx = caustic.getContext("2d");
+    const wImg = wctx.createImageData(S, S), cImg = cctx.createImageData(S, S);
+    const oct = [4, 8, 16, 32].map((n, i) => periodicNoise(n, 1234 + i * 977));
+    const warpA = periodicNoise(4, 99), warpB = periodicNoise(4, 4242);
+    const ridgeA = periodicNoise(6, 777), ridgeB = periodicNoise(10, 31337);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const u = x / S, v = y / S, i = (y * S + x) * 4;
+      let w = 0, amp = 0.55, tot = 0;
+      for (const f of oct) { w += f(u, v) * amp; tot += amp; amp *= 0.5; }
+      w /= tot;
+      const g = Math.max(0, Math.min(255, 128 + (w - 0.5) * 230));
+      wImg.data[i] = wImg.data[i + 1] = wImg.data[i + 2] = g; wImg.data[i + 3] = 255;
+      const wu = u + 0.12 * warpA(u, v), wv = v + 0.12 * warpB(u, v);
+      const r1 = 1 - Math.abs(2 * ridgeA(wu, wv) - 1);
+      const r2 = 1 - Math.abs(2 * ridgeB(wu + 0.3, wv + 0.7) - 1);
+      const c = Math.min(1, Math.pow(r1, 9) * 0.9 + Math.pow(r2, 12) * 0.7);
+      cImg.data[i] = 190; cImg.data[i + 1] = 240; cImg.data[i + 2] = 255; cImg.data[i + 3] = Math.round(c * 255);
+    }
+    wctx.putImageData(wImg, 0, 0); cctx.putImageData(cImg, 0, 0);
+    const root = document.documentElement.style;
+    root.setProperty("--tex-water", `url(${water.toDataURL()})`);
+    root.setProperty("--tex-caustic", `url(${caustic.toDataURL()})`);
+  }
+
+  // ======================================================================
+  //  Ship artwork: top-down SVG drawn along x (stern at 0, bow at L), y 0..100
+  // ======================================================================
+  function hullPath(L, beam, bow, s = 8, sr = 10) {
+    const t = 50 - beam / 2, b = 50 + beam / 2;
+    return `M${s + sr},${t} L${L - bow},${t} C${L - bow * 0.35},${t} ${L - 8},${50 - beam * 0.12} ${L - 3},50 ` +
+      `C${L - 8},${50 + beam * 0.12} ${L - bow * 0.35},${b} ${L - bow},${b} L${s + sr},${b} ` +
+      `Q${s},${b} ${s},${b - sr} L${s},${t + sr} Q${s},${t} ${s + sr},${t} Z`;
+  }
+  function turret(x, y, r, barrels, angle, blen) {
+    let g = `<g transform="translate(${x},${y}) rotate(${angle})">`;
+    for (let i = 0; i < barrels; i++) {
+      const oy = (i - (barrels - 1) / 2) * r * 0.42;
+      g += `<rect x="${r * 0.3}" y="${oy - r * 0.11}" width="${blen}" height="${r * 0.22}" rx="${r * 0.08}" fill="#3a434d" stroke="#1f252b" stroke-width=".6"/>`;
+    }
+    g += `<rect x="${-r}" y="${-r * 0.8}" width="${2 * r}" height="${1.6 * r}" rx="${r * 0.7}" fill="url(#g-turret)" stroke="#262d35" stroke-width="1.4"/>`;
+    g += `<circle cx="${-r * 0.35}" cy="${-r * 0.25}" r="${r * 0.18}" fill="#57626e"/></g>`;
+    return g;
+  }
+  const shadowAndFoam = (path) =>
+    `<path d="${path}" transform="translate(5,7)" fill="rgba(0,8,20,.42)"/>` +
+    `<path d="${path}" fill="none" stroke="rgba(225,245,255,.32)" stroke-width="5"/>`;
+  const wake = (L, beam) =>
+    `<path d="M10,${50 - beam / 2 + 6} Q-16,50 10,${50 + beam / 2 - 6}" fill="none" stroke="rgba(230,245,255,.35)" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="M${L - 34},${50 - beam / 2 - 3} Q${L + 6},50 ${L - 34},${50 + beam / 2 + 3}" fill="none" stroke="rgba(230,245,255,.28)" stroke-width="2"/>`;
+  function jet(x, y, s) {
+    return `<path transform="translate(${x},${y}) rotate(90) scale(${s})" d="M0,-1 L.3,-.3 L1,.3 L1,.45 L.25,.25 L.15,.8 L.35,1 L-.35,1 L-.15,.8 L-.25,.25 L-1,.45 L-1,.3 L-.3,-.3 Z" fill="#a9b3bd" stroke="#3d454e" stroke-width=".08"/>`;
+  }
+
+  const SHIP_ART = {
+    Carrier(L) {
+      const hull = hullPath(L, 58, 70);
+      return shadowAndFoam(hull) + wake(L, 58) +
+        `<path d="${hull}" fill="url(#g-hull)" stroke="#2a323b" stroke-width="1.5"/>` +
+        `<path d="M16,15 L430,13 L486,30 L494,50 L486,70 L430,87 L16,85 Z" fill="url(#g-flight)" stroke="#262c34" stroke-width="1.6"/>` +
+        `<path d="M22,20 L428,18 L478,33" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.2"/>` +
+        `<line x1="34" y1="52" x2="472" y2="52" stroke="#e8eef3" stroke-width="1.6" stroke-dasharray="14 10" opacity=".75"/>` +
+        `<line x1="40" y1="72" x2="330" y2="30" stroke="#f3d36b" stroke-width="1.4" stroke-dasharray="10 8" opacity=".6"/>` +
+        `<rect x="120" y="19" width="28" height="15" fill="#454d57" stroke="#2a3038"/>` +
+        `<rect x="225" y="68" width="28" height="15" fill="#454d57" stroke="#2a3038"/>` +
+        `<rect x="298" y="3" width="64" height="20" rx="3" fill="url(#g-light)" stroke="#39424c" stroke-width="1.4"/>` +
+        `<rect x="306" y="7" width="40" height="12" rx="2" fill="url(#g-dark)"/>` +
+        `<circle cx="352" cy="13" r="5.5" fill="#2b333c" stroke="#d3dce4" stroke-width="1.5"/>` +
+        jet(400, 36, 11) + jet(428, 36, 11) + jet(414, 64, 11) + jet(70, 32, 10) + jet(70, 66, 10) + jet(190, 40, 10);
+    },
+    Battleship(L) {
+      const hull = hullPath(L, 58, 95);
+      return shadowAndFoam(hull) + wake(L, 58) +
+        `<path d="${hull}" fill="url(#g-hull)" stroke="#2a323b" stroke-width="1.5"/>` +
+        `<path d="${hullPath(L - 8, 46, 86, 15)}" fill="url(#g-deck)"/>` +
+        `<g stroke="rgba(0,0,0,.14)" stroke-width=".8"><line x1="30" y1="40" x2="330" y2="40"/><line x1="30" y1="50" x2="345" y2="50"/><line x1="30" y1="60" x2="330" y2="60"/></g>` +
+        `<rect x="148" y="31" width="90" height="38" rx="4" fill="url(#g-dark)" stroke="#262d35" stroke-width="1.2"/>` +
+        `<rect x="158" y="36" width="62" height="28" rx="3" fill="url(#g-light)" stroke="#4a545f"/>` +
+        `<rect x="214" y="38" width="16" height="24" rx="2" fill="#2d353e"/>` +
+        `<g fill="#9fd8ff" opacity=".7"><rect x="226" y="41" width="2" height="4"/><rect x="226" y="48" width="2" height="4"/><rect x="226" y="55" width="2" height="4"/></g>` +
+        `<ellipse cx="180" cy="50" rx="11" ry="8.5" fill="#2a3138" stroke="#8a96a2" stroke-width="1.4"/><ellipse cx="180" cy="50" rx="6" ry="4.5" fill="#0d1014"/>` +
+        `<circle cx="203" cy="50" r="4.5" fill="#d3dce4" stroke="#3a434d"/>` +
+        turret(146, 32, 6, 2, -90, 9) + turret(146, 68, 6, 2, 90, 9) + turret(240, 32, 6, 2, -90, 9) + turret(240, 68, 6, 2, 90, 9) +
+        turret(312, 50, 14, 3, 0, 36) + turret(268, 50, 15.5, 3, 0, 34) + turret(92, 50, 15.5, 3, 180, 34);
+    },
+    Cruiser(L) {
+      const hull = hullPath(L, 50, 80);
+      let vls = "";
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++)
+        vls += `<rect x="${186 + i * 6.5}" y="${43 + j * 8}" width="5" height="6" fill="#3b444e" stroke="#1f252b" stroke-width=".7"/>`;
+      return shadowAndFoam(hull) + wake(L, 50) +
+        `<path d="${hull}" fill="url(#g-hull)" stroke="#2a323b" stroke-width="1.5"/>` +
+        `<path d="${hullPath(L - 6, 40, 72, 14)}" fill="url(#g-deck)"/>` +
+        vls +
+        `<rect x="108" y="34" width="68" height="32" rx="4" fill="url(#g-dark)" stroke="#262d35" stroke-width="1.2"/>` +
+        `<rect x="118" y="38" width="48" height="24" rx="3" fill="url(#g-light)" stroke="#4a545f"/>` +
+        `<ellipse cx="126" cy="50" rx="7" ry="6" fill="#2a3138" stroke="#8a96a2"/>` +
+        `<circle cx="152" cy="50" r="7.5" fill="#2b333c" stroke="#d3dce4" stroke-width="1.5"/>` +
+        `<path d="M146,50 H158 M152,44 V56" stroke="#d3dce4" stroke-width="1.2"/>` +
+        `<circle cx="50" cy="50" r="16" fill="#4d5762" stroke="rgba(232,238,243,.75)" stroke-width="1.5"/>` +
+        `<path d="M44,42 V58 M56,42 V58 M44,50 H56" stroke="rgba(232,238,243,.85)" stroke-width="2.4"/>` +
+        `<circle cx="88" cy="50" r="5" fill="url(#g-turret)" stroke="#262d35"/>` +
+        turret(232, 50, 11, 1, 0, 30);
+    },
+    Submarine(L) {
+      const body = `M8,50 C14,44 30,35 70,34 L235,33 C268,33 290,41 293,50 C290,59 268,67 235,67 L70,66 C30,65 14,56 8,50 Z`;
+      return `<path d="${body}" transform="translate(4,6)" fill="rgba(0,8,20,.4)"/>` +
+        `<path d="${body}" fill="none" stroke="rgba(200,235,255,.28)" stroke-width="6"/>` +
+        `<path d="M8,42 Q-14,50 8,58" fill="none" stroke="rgba(230,245,255,.3)" stroke-width="2.5"/>` +
+        `<path d="M13,50 L24,30 L31,30 L26,50 L31,70 L24,70 Z" fill="#20272f" stroke="#0e1216"/>` +
+        `<path d="${body}" fill="url(#g-sub)" stroke="#0d1115" stroke-width="1.3"/>` +
+        `<path d="M60,40 C120,37 220,37 270,42" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2.5" stroke-linecap="round"/>` +
+        `<rect x="189" y="33" width="6" height="34" rx="2" fill="#1a2027" stroke="#0d1115"/>` +
+        `<rect x="174" y="43" width="40" height="14" rx="7" fill="#1f262e" stroke="#4b5661" stroke-width="1.2"/>` +
+        `<g fill="#0f1419"><circle cx="118" cy="50" r="2.6"/><circle cx="140" cy="50" r="2.6"/><circle cx="246" cy="50" r="2.6"/></g>`;
+    },
+    Destroyer(L) {
+      const hull = hullPath(L, 42, 60);
+      return shadowAndFoam(hull) + wake(L, 42) +
+        `<path d="${hull}" fill="url(#g-hull)" stroke="#2a323b" stroke-width="1.5"/>` +
+        `<path d="${hullPath(L - 5, 32, 54, 13)}" fill="url(#g-deck)"/>` +
+        `<rect x="28" y="42" width="22" height="16" rx="2" fill="#3b444e" stroke="#1f252b"/>` +
+        `<path d="M32,46 H46 M32,50 H46 M32,54 H46" stroke="#1f252b" stroke-width=".8"/>` +
+        `<ellipse cx="68" cy="50" rx="6" ry="5" fill="#2a3138" stroke="#8a96a2"/>` +
+        `<rect x="78" y="36" width="50" height="28" rx="4" fill="url(#g-dark)" stroke="#262d35" stroke-width="1.2"/>` +
+        `<rect x="86" y="40" width="32" height="20" rx="3" fill="url(#g-light)" stroke="#4a545f"/>` +
+        `<circle cx="106" cy="50" r="4.5" fill="#2b333c" stroke="#d3dce4" stroke-width="1.3"/>` +
+        turret(150, 50, 8.5, 1, 0, 22);
+    },
+  };
+
+  const svgCache = new Map();
+  function shipSVG(name, size, dir) {
+    const k = name + dir;
+    if (svgCache.has(k)) return svgCache.get(k);
+    const L = size * 100, inner = SHIP_ART[name](L);
+    const svg = dir === "h"
+      ? `<svg viewBox="0 0 ${L} 100" aria-hidden="true">${inner}</svg>`
+      : `<svg viewBox="0 0 100 ${L}" aria-hidden="true"><g transform="translate(100,0) rotate(90)">${inner}</g></svg>`;
+    svgCache.set(k, svg);
+    return svg;
+  }
+
+  // ======================================================================
+  //  Particle effects engine (canvas 2D)
+  //  Board layers use "cell" units (1 = one square); the global layer uses px.
+  // ======================================================================
+  const FX = (() => {
+    const reducedQuery = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+    const reduced = () => !!(reducedQuery && reducedQuery.matches);
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+    const MAX_PARTS = 900;
+
+    function sprite(stops, size = 64) {
+      const c = document.createElement("canvas"); c.width = c.height = size;
+      const x = c.getContext("2d"), g = x.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      stops.forEach(([o, col]) => g.addColorStop(o, col));
+      x.fillStyle = g; x.fillRect(0, 0, size, size);
+      return c;
+    }
+    const SP = {
+      core:  sprite([[0, "rgba(255,255,245,1)"], [.25, "rgba(255,228,140,.95)"], [.6, "rgba(255,150,50,.35)"], [1, "rgba(255,90,20,0)"]]),
+      fire:  sprite([[0, "rgba(255,206,100,1)"], [.4, "rgba(255,115,35,.7)"], [1, "rgba(210,45,10,0)"]]),
+      ember: sprite([[0, "rgba(255,95,40,.9)"], [.5, "rgba(170,35,12,.4)"], [1, "rgba(90,10,0,0)"]]),
+      smoke: sprite([[0, "rgba(38,38,42,.9)"], [.5, "rgba(34,34,40,.45)"], [1, "rgba(30,30,36,0)"]]),
+      steam: sprite([[0, "rgba(200,210,220,.75)"], [.5, "rgba(170,185,200,.3)"], [1, "rgba(150,170,190,0)"]]),
+      water: sprite([[0, "rgba(255,255,255,1)"], [.35, "rgba(225,246,255,.8)"], [1, "rgba(170,225,255,0)"]]),
+      flash: sprite([[0, "rgba(255,255,255,1)"], [.2, "rgba(255,245,220,.8)"], [1, "rgba(255,220,160,0)"]]),
+      oil:   sprite([[0, "rgba(4,8,12,.85)"], [.6, "rgba(10,14,22,.35)"], [1, "rgba(0,0,0,0)"]]),
+    };
+    const FIRE_SEQ = [SP.core, SP.fire, SP.fire, SP.ember];
+
+    const layers = [];
+    let globalLayer = null;
+
+    function makeLayer(canvas, field) {
+      const L = { canvas, ctx: canvas.getContext("2d"), field, margin: 0.15, parts: [], emitters: new Map(), missiles: [], drawn: false };
+      layers.push(L);
+      return L;
+    }
+
+    function prepare(L) {
+      const d = dpr();
+      let cssW, cssH, scale, ox;
+      if (L.field) {
+        const w = L.field.clientWidth;
+        if (!w) return false;
+        cssW = cssH = w * (1 + 2 * L.margin); scale = w / 10; ox = w * L.margin;
+      } else { cssW = innerWidth; cssH = innerHeight; scale = 1; ox = 0; }
+      const pw = Math.round(cssW * d), ph = Math.round(cssH * d);
+      if (L.canvas.width !== pw || L.canvas.height !== ph) { L.canvas.width = pw; L.canvas.height = ph; }
+      const ctx = L.ctx;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, pw, ph);
+      ctx.setTransform(d * scale, 0, 0, d * scale, d * ox, d * ox);
+      L.scale = scale;
+      return true;
+    }
+
+    function add(L, p) {
+      if (L.parts.length >= MAX_PARTS) return;
+      p.age = 0; p.delay = p.delay || 0; p.drag = p.drag == null ? 1 : p.drag;
+      p.vx = p.vx || 0; p.vy = p.vy || 0;
+      L.parts.push(p);
+    }
+    const radial = (speed) => { const a = Math.random() * Math.PI * 2; return [Math.cos(a) * speed, Math.sin(a) * speed]; };
+
+    function alphaOf(p, t) {
+      if (p.fi) return p.a * (t < p.fi ? t / p.fi : (1 - t) / (1 - p.fi));
+      return p.a * Math.pow(1 - t, p.pow || 1);
+    }
+
+    function drawPart(ctx, p) {
+      const t = p.age / p.life, a = alphaOf(p, t);
+      if (a <= 0.003) return;
+      const e = 1 - (1 - t) * (1 - t);
+      if (p.k === "sp") {
+        const s = p.s0 + (p.s1 - p.s0) * e;
+        const img = p.seq ? p.seq[Math.min(p.seq.length - 1, Math.floor(t * p.seq.length))] : p.sp;
+        ctx.globalAlpha = a;
+        ctx.drawImage(img, p.x - s / 2, p.y - s / 2, s, s);
+      } else if (p.k === "spark") {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = `rgba(${p.col},${a})`; ctx.lineWidth = p.lw; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * p.len, p.y - p.vy * p.len); ctx.stroke();
+      } else if (p.k === "ring") {
+        const r = p.r0 + (p.r1 - p.r0) * e;
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = `rgba(${p.col},${a})`; ctx.lineWidth = p.lw0 + (p.lw1 - p.lw0) * t;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.stroke();
+      } else if (p.k === "drop") {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = `rgba(${p.col},${a})`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.s0 * (1 - t * 0.6), 0, Math.PI * 2); ctx.fill();
+      } else if (p.k === "chunk") {
+        ctx.globalAlpha = a;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + p.spin * p.age);
+        ctx.fillStyle = p.col; ctx.fillRect(-p.s0 / 2, -p.s0 / 3, p.s0, p.s0 * 0.66); ctx.restore();
+      }
+    }
+
+    function drawMissile(ctx, m, now) {
+      const t = Math.min(1, (now - m.t0) / m.dur);
+      const s = Math.pow(t, 1.25);
+      const ix = (1 - s) * (1 - s) * m.x0 + 2 * (1 - s) * s * m.cx + s * s * m.x1;
+      const iy = (1 - s) * (1 - s) * m.y0 + 2 * (1 - s) * s * m.cy + s * s * m.y1;
+      const dx = 2 * (1 - s) * (m.cx - m.x0) + 2 * s * (m.x1 - m.cx);
+      const dy = 2 * (1 - s) * (m.cy - m.y0) + 2 * s * (m.y1 - m.cy);
+      const ang = Math.atan2(dy, dx);
+      const alt = 1 + 0.65 * Math.sin(Math.PI * s);
+      const gx = m.x0 + (m.x1 - m.x0) * s, gy = m.y0 + (m.y1 - m.y0) * s;
+      // ground shadow
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 0.22 * (1 - Math.abs(0.5 - s));
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.ellipse(gx + 6, gy + 10, m.u * 0.35, m.u * 0.1, ang, 0, Math.PI * 2); ctx.fill();
+      // trail
+      if (m.last) {
+        const steps = 3;
+        for (let i = 0; i < steps; i++) {
+          const f = i / steps;
+          const px = m.last[0] + (ix - m.last[0]) * f, py = m.last[1] + (iy - m.last[1]) * f;
+          add(globalLayer, { k: "sp", sp: SP.steam, x: px + rand(-1, 1), y: py + rand(-1, 1), vx: rand(-6, 6), vy: rand(-6, 6), drag: 0.4,
+            s0: m.u * 0.18, s1: m.u * rand(0.55, 0.85), life: rand(0.5, 0.8), a: 0.32, fi: 0.1 });
+        }
+        add(globalLayer, { k: "sp", sp: SP.core, add: true, x: ix - Math.cos(ang) * m.u * 0.3 * alt, y: iy - Math.sin(ang) * m.u * 0.3 * alt,
+          s0: m.u * 0.45 * alt, s1: m.u * 0.1, life: 0.14, a: 0.9 });
+      }
+      m.last = [ix, iy];
+      // body
+      ctx.save();
+      ctx.translate(ix, iy); ctx.rotate(ang);
+      const k = (m.u * 0.75 * alt) / 40;
+      ctx.scale(k, k);
+      ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.95;
+      ctx.drawImage(SP.core, -36, -9, 18, 18);
+      ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+      ctx.fillStyle = "#39424c";
+      ctx.beginPath(); ctx.moveTo(-18, -2.5); ctx.lineTo(-24, -8); ctx.lineTo(-20, -8); ctx.lineTo(-12, -2.5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-18, 2.5); ctx.lineTo(-24, 8); ctx.lineTo(-20, 8); ctx.lineTo(-12, 2.5); ctx.closePath(); ctx.fill();
+      const g = ctx.createLinearGradient(0, -3, 0, 3);
+      g.addColorStop(0, "#f4f7fa"); g.addColorStop(.5, "#b8c3ce"); g.addColorStop(1, "#6d7a87");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(-20, -3); ctx.lineTo(12, -3); ctx.quadraticCurveTo(22, -2, 24, 0); ctx.quadraticCurveTo(22, 2, 12, 3); ctx.lineTo(-20, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#e0482b"; ctx.fillRect(9, -3, 2.5, 6);
+      ctx.restore();
+    }
+
+    function step(L, dt, now) {
+      const busy = L.parts.length || L.emitters.size || L.missiles.length;
+      if (!busy) { if (L.drawn) { L.ctx.setTransform(1, 0, 0, 1, 0, 0); L.ctx.clearRect(0, 0, L.canvas.width, L.canvas.height); L.drawn = false; } return; }
+      if (!prepare(L)) return;
+      if (!reduced()) for (const em of L.emitters.values()) emit(L, em, dt);
+      const ctx = L.ctx, keep = [];
+      for (const p of L.parts) {
+        if (p.delay > 0) { p.delay -= dt; keep.push(p); continue; }
+        p.age += dt;
+        if (p.age >= p.life) continue;
+        const f = Math.pow(p.drag, dt);
+        p.vx *= f; p.vy *= f;
+        if (p.wind) { p.vx += p.wind[0] * dt; p.vy += p.wind[1] * dt; }
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        keep.push(p);
+      }
+      L.parts = keep;
+      ctx.globalCompositeOperation = "source-over";
+      for (const p of keep) if (!p.add && p.delay <= 0) drawPart(ctx, p);
+      ctx.globalCompositeOperation = "lighter";
+      for (const p of keep) if (p.add && p.delay <= 0) drawPart(ctx, p);
+      ctx.globalCompositeOperation = "source-over";
+      if (L.missiles.length) {
+        L.missiles = L.missiles.filter(m => now - m.t0 < m.dur);
+        for (const m of L.missiles) drawMissile(ctx, m, now);
+      }
+      ctx.globalAlpha = 1;
+      L.drawn = true;
+    }
+
+    // Continuous fire and smoke on damaged squares
+    function emit(L, em, dt) {
+      if (em.kind === "fire") {
+        em.acc += dt * 15;
+        while (em.acc >= 1) {
+          em.acc -= 1;
+          add(L, { k: "sp", seq: FIRE_SEQ, add: true, x: em.x + rand(-.17, .17), y: em.y + rand(-.13, .13), vx: rand(.05, .3), vy: rand(-.6, -.3), drag: .5,
+            s0: rand(.28, .4), s1: .08, life: rand(.4, .65), a: .9 });
+        }
+        em.acc2 += dt * 3;
+        while (em.acc2 >= 1) {
+          em.acc2 -= 1;
+          add(L, { k: "sp", sp: SP.smoke, x: em.x + rand(-.1, .1), y: em.y - .1, vx: rand(.2, .45), vy: rand(-.55, -.35), drag: .7,
+            s0: .3, s1: rand(1, 1.4), life: rand(1.6, 2.4), a: .42, fi: .18 });
+        }
+      } else {
+        em.acc += dt * 1.1;
+        while (em.acc >= 1) {
+          em.acc -= 1;
+          add(L, { k: "sp", sp: SP.smoke, x: em.x + rand(-.2, .2), y: em.y, vx: rand(.15, .35), vy: rand(-.45, -.25), drag: .7,
+            s0: .3, s1: rand(.9, 1.3), life: rand(1.8, 2.6), a: .26, fi: .2 });
+        }
+      }
+    }
+
+    // ---------- Effect recipes (board layer, cell units) ----------
+    function explosion(L, x, y, k = 1) {
+      add(L, { k: "sp", sp: SP.flash, add: true, x, y, s0: 2.4 * k, s1: 3.4 * k, life: .22, a: 1 });
+      add(L, { k: "ring", x, y, r0: .2, r1: 1.9 * k, lw0: .1, lw1: .01, col: "255,215,170", life: .45, a: .85 });
+      for (let i = 0; i < 20; i++) {
+        const [vx, vy] = radial(rand(.6, 3.2) * k);
+        add(L, { k: "sp", seq: FIRE_SEQ, add: true, x: x + vx * .05, y: y + vy * .05, vx, vy, drag: .03,
+          s0: rand(.35, .7) * k, s1: rand(.85, 1.35) * k, life: rand(.45, .85), a: .95 });
+      }
+      for (let i = 0; i < 28; i++) {
+        const [vx, vy] = radial(rand(4, 10) * k);
+        add(L, { k: "spark", add: true, x, y, vx, vy, drag: .08, col: "255,205,130", lw: .045, len: .055, life: rand(.25, .6), a: 1 });
+      }
+      for (let i = 0; i < 7; i++) {
+        const [vx, vy] = radial(rand(2, 5) * k);
+        add(L, { k: "chunk", x, y, vx, vy, drag: .1, col: "#15191e", s0: rand(.08, .15), rot: rand(0, 6), spin: rand(-12, 12), life: rand(.5, .9), a: 1, pow: 3 });
+      }
+      for (let i = 0; i < 12; i++) {
+        const [vx, vy] = radial(rand(.25, 1.1) * k);
+        add(L, { k: "sp", sp: SP.smoke, x, y, vx: vx + .2, vy: vy - .25, drag: .35, delay: rand(.05, .22),
+          s0: .5 * k, s1: rand(1.4, 2.1) * k, life: rand(1.4, 2.4), a: .55, fi: .15 });
+      }
+      add(L, { k: "sp", sp: SP.ember, add: true, x, y, s0: 1.3 * k, s1: 1.1 * k, life: 1.2, a: .6 });
+    }
+
+    function splash(L, x, y) {
+      add(L, { k: "sp", sp: SP.water, x, y, s0: .4, s1: 1.6, life: .45, a: .9 });
+      for (let i = 0; i < 3; i++)
+        add(L, { k: "ring", x, y, delay: i * .14, r0: .15, r1: 1.25 + i * .4, lw0: .08, lw1: .012, col: "215,242,255", life: .9 + i * .2, a: .8 });
+      for (let i = 0; i < 32; i++) {
+        const [vx, vy] = radial(rand(1.2, 4.6));
+        add(L, { k: "sp", sp: SP.water, x, y, vx, vy, drag: .03, s0: rand(.18, .34), s1: .05, life: rand(.4, .9), a: .9 });
+      }
+      for (let i = 0; i < 24; i++) {
+        const [vx, vy] = radial(rand(2.5, 6.5));
+        add(L, { k: "drop", x, y, vx, vy, drag: .05, col: "225,244,255", s0: rand(.03, .06), life: rand(.4, .85), a: 1 });
+      }
+      for (let i = 0; i < 6; i++) {
+        const [vx, vy] = radial(rand(.2, .6));
+        add(L, { k: "sp", sp: SP.steam, x, y, vx, vy, drag: .4, s0: .6, s1: rand(1.4, 1.9), life: rand(.8, 1.2), a: .28, fi: .15 });
+      }
+    }
+
+    function muzzle(L, x, y) {
+      add(L, { k: "sp", sp: SP.flash, add: true, x, y, s0: 1, s1: 1.4, life: .14, a: .9 });
+      for (let i = 0; i < 6; i++) {
+        const [vx, vy] = radial(rand(.3, .9));
+        add(L, { k: "sp", sp: SP.steam, x, y, vx, vy, drag: .4, s0: .3, s1: rand(.8, 1.1), life: rand(.6, 1), a: .4, fi: .1 });
+      }
+    }
+
+    function sinkDebris(L, cells) {
+      cells.forEach(([r, c], i) => {
+        const x = c + .5, y = r + .5;
+        for (let j = 0; j < 8; j++)
+          add(L, { k: "ring", x: x + rand(-.3, .3), y: y + rand(-.3, .3), delay: .9 + rand(0, 1.6), r0: .02, r1: rand(.08, .16), lw0: .03, lw1: .01, col: "220,245,255", life: rand(.4, .7), a: .8 });
+        add(L, { k: "sp", sp: SP.oil, x, y, delay: .8 + i * .1, s0: .6, s1: rand(1.8, 2.4), life: 3.2, a: .5, fi: .2 });
+        for (let j = 0; j < 3; j++)
+          add(L, { k: "sp", sp: SP.steam, x: x + rand(-.3, .3), y, vx: rand(.1, .3), vy: rand(-.5, -.2), drag: .6, delay: 1 + rand(0, 1), s0: .4, s1: rand(1.2, 1.7), life: rand(1.4, 2), a: .3, fi: .2 });
+      });
+    }
+
+    // ---------- Animation driver ----------
+    let lastT = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - lastT) / 1000);
+      lastT = now;
+      for (const L of layers) step(L, dt, now);
+      requestAnimationFrame(frame);
+    }
+
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    let shakeTimer = null;
+    function shake(size) {
+      if (reduced()) return;
+      const el = document.getElementById("main");
+      el.classList.remove("shake-s", "shake-l"); void el.offsetWidth;
+      el.classList.add(size === "l" ? "shake-l" : "shake-s");
+      clearTimeout(shakeTimer);
+      shakeTimer = setTimeout(() => el.classList.remove("shake-s", "shake-l"), 650);
+    }
+
+    return {
+      reduced, SP,
+      init(globalCanvas) {
+        globalLayer = makeLayer(globalCanvas, null);
+        requestAnimationFrame(frame);
+      },
+      makeLayer,
+      clearAll() { for (const L of layers) { L.parts = []; L.missiles = []; } },
+      setEmitters(L, list) {
+        const next = new Map();
+        for (const e of list) {
+          const prev = L.emitters.get(e.id);
+          next.set(e.id, prev && prev.kind === e.kind ? prev : { ...e, acc: Math.random(), acc2: Math.random() });
+        }
+        L.emitters = next;
+      },
+      // Missile from one screen point to another. Resolves on impact.
+      launch(from, to, unitPx, muzzleAt) {
+        if (reduced()) return Promise.resolve();
+        if (muzzleAt) muzzle(muzzleAt.layer, muzzleAt.x, muzzleAt.y);
+        const dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
+        const dur = Math.max(560, Math.min(900, 420 + dist * 0.55));
+        const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2;
+        globalLayer.missiles.push({ x0: from[0], y0: from[1], x1: to[0], y1: to[1], cx: mx, cy: my - (dist * 0.35 + 50),
+          t0: performance.now(), dur, u: unitPx, last: null });
+        return wait(dur);
+      },
+      hit(L, r, c) {
+        if (reduced()) return wait(250);
+        explosion(L, c + .5, r + .5, 1);
+        shake("s");
+        return wait(550);
+      },
+      miss(L, r, c) {
+        if (reduced()) return wait(250);
+        splash(L, c + .5, r + .5);
+        return wait(450);
+      },
+      // Final blow + chain of secondary explosions + sinking (CSS) + debris
+      sink(L, r, c, ship, bannerEl, text) {
+        bannerEl.textContent = text;
+        bannerEl.classList.remove("show"); void bannerEl.offsetWidth; bannerEl.classList.add("show");
+        if (reduced()) return wait(900);
+        explosion(L, c + .5, r + .5, 1.2);
+        shake("l");
+        ship.cells.forEach(([sr, sc], i) => setTimeout(() => {
+          explosion(L, sc + .5 + rand(-.15, .15), sr + .5 + rand(-.15, .15), .75);
+          if (i === ship.cells.length - 1) shake("s");
+        }, 180 + i * 150));
+        sinkDebris(L, ship.cells);
+        return wait(2700);
+      },
+      stats() {
+        return layers.map(L => ({ parts: L.parts.length, missiles: L.missiles.length, emitters: L.emitters.size,
+          board: L.field ? L.field.closest(".board").id : "global" }));
+      },
+    };
+  })();
+  // ======================================================================
+  //  Game state
+  // ======================================================================
   const state = {
     phase: "setup",          // "setup" | "battle" | "over"
     turn: "player",          // "player" | "computer"
     player: newSide(),
     enemy: newSide(),
-    selected: 0,             // index into FLEET of the ship being placed
+    selected: 0,
     dir: "h",
     skill: "smart",
     busy: false,
-    lastShot: { player: null, enemy: null }, // last square hit on each board
+    aim: null,               // { board, r, c } while a missile is in the air
+    sinking: null,           // ship currently playing its sinking animation
+    lastShot: { player: null, enemy: null },
     stats: { playerShots: 0, playerHits: 0, computerShots: 0, computerHits: 0 },
     hover: null,
     timer: null,
+    gameId: 0,
+    demoOpen: false,
   };
 
-  // ---------- Screen elements ----------
   const $ = id => document.getElementById(id);
   const els = {
-    playerBoard: $("player-board"), enemyBoard: $("enemy-board"),
     playerFleet: $("player-fleet"), enemyFleet: $("enemy-fleet"),
     playerCard: $("player-card"), enemyCard: $("enemy-card"),
     setupPanel: $("setup-panel"), shipList: $("ship-list"),
@@ -508,82 +1217,139 @@
     startBtn: $("start-btn"), modal: $("modal"), playerSub: $("player-sub"),
   };
 
-  function buildBoard(boardEl, owner) {
-    boardEl.innerHTML = "";
-    boardEl.appendChild(document.createElement("div"));
-    for (let c = 0; c < SIZE; c++) {
-      const l = document.createElement("div"); l.className = "label"; l.textContent = LETTERS[c]; boardEl.appendChild(l);
-    }
+  // ======================================================================
+  //  Battlefield boards
+  // ======================================================================
+  const boards = {};
+  function createBoard(name, el) {
+    el.innerHTML =
+      `<div class="corner"></div>` +
+      `<div class="cols">${[...LETTERS].map(l => `<span>${l}</span>`).join("")}</div>` +
+      `<div class="rows">${Array.from({ length: SIZE }, (_, i) => `<span>${i + 1}</span>`).join("")}</div>` +
+      `<div class="field">` +
+        `<div class="ocean"><i class="water"></i><i class="clouds"></i><i class="caustic"></i><i class="caustic two"></i><i class="swell"></i></div>` +
+        `<div class="ships"></div><div class="cells"></div><canvas class="fx"></canvas><div class="banner"></div>` +
+      `</div>`;
+    const field = el.querySelector(".field"), cellsEl = el.querySelector(".cells");
+    const cells = [];
     for (let r = 0; r < SIZE; r++) {
-      const l = document.createElement("div"); l.className = "label"; l.textContent = r + 1; boardEl.appendChild(l);
+      cells.push([]);
       for (let c = 0; c < SIZE; c++) {
         const cell = document.createElement("div");
         cell.className = "cell";
-        cell.dataset.r = r; cell.dataset.c = c; cell.dataset.owner = owner;
+        cell.dataset.r = r; cell.dataset.c = c;
         cell.setAttribute("role", "button");
         cell.setAttribute("aria-label", coordName(r, c));
-        boardEl.appendChild(cell);
+        cellsEl.appendChild(cell);
+        cells[r].push(cell);
       }
     }
-  }
-  const cellEl = (boardEl, r, c) => boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-
-  function shipShapeClasses(ship, r, c) {
-    const idx = ship.cells.findIndex(([a, b]) => a === r && b === c);
-    const cls = ["ship", ship.dir];
-    if (idx === 0) cls.push("start");
-    if (idx === ship.size - 1) cls.push("end");
-    return cls;
+    boards[name] = {
+      el, field, cells, shipsLayer: el.querySelector(".ships"), shipEls: new Map(), ghost: null,
+      banner: el.querySelector(".banner"), layer: FX.makeLayer(el.querySelector(".fx"), field),
+    };
   }
 
-  function renderBoard(boardEl, side, opts) {
+  function makeShipEl(B, name, size, dir, r0, c0) {
+    const el = document.createElement("div");
+    el.className = `ship-el ${dir}`;
+    el.dataset.name = name;
+    el.style.setProperty("--r", r0); el.style.setProperty("--c", c0);
+    el.style.setProperty("--w", dir === "h" ? size : 1); el.style.setProperty("--h", dir === "h" ? 1 : size);
+    el.style.setProperty("--n", size);
+    el.innerHTML = `<div class="ship-body">${shipSVG(name, size, dir)}<div class="dmgs"></div></div>`;
+    B.shipsLayer.appendChild(el);
+    return el;
+  }
+
+  function renderBoard(name, side, opts) {
+    const B = boards[name];
+    const emitters = [];
     for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
-      const el = cellEl(boardEl, r, c);
       const cls = ["cell"];
       const ship = shipAt(side, r, c);
       const shot = side.shots[r][c];
       const sunk = ship && isSunk(ship);
-      if (ship && (opts.showShips || sunk)) {
-        cls.push(...shipShapeClasses(ship, r, c));
-        if (!opts.showShips && !sunk) cls.push("revealed");
-      } else if (ship && opts.revealAll) {
-        cls.push(...shipShapeClasses(ship, r, c), "revealed");
-      }
       if (sunk) cls.push("sunk");
       else if (shot === "hit") cls.push("hit");
       else if (shot === "miss") cls.push("miss");
       else cls.push("open");
-      const last = opts.last;
-      if (last && last[0] === r && last[1] === c) cls.push("last", "anim");
+      if (opts.last && opts.last[0] === r && opts.last[1] === c) cls.push("last");
+      if (opts.aim && opts.aim.r === r && opts.aim.c === c) cls.push("locked");
       if (opts.preview && opts.preview.keys.has(key(r, c))) cls.push(opts.preview.ok ? "preview-ok" : "preview-bad");
-      el.className = cls.join(" ");
+      const el = B.cells[r][c];
+      const cn = cls.join(" ");
+      if (el.className !== cn) el.className = cn;
       let label = coordName(r, c);
       if (sunk) label += ", sunk"; else if (shot) label += ", " + shot;
-      el.setAttribute("aria-label", label);
+      if (el.getAttribute("aria-label") !== label) el.setAttribute("aria-label", label);
+      if (shot === "hit") emitters.push({ id: key(r, c), x: c + .5, y: r + .5, kind: sunk ? "smoke" : "fire" });
     }
+
+    // Ships
+    const want = new Map();
+    for (const ship of side.ships) {
+      const sunk = isSunk(ship);
+      if (opts.showShips || sunk || opts.revealAll) want.set(ship.name, ship);
+    }
+    for (const [n, el] of B.shipEls) {
+      const ship = want.get(n);
+      if (!ship || el.dataset.pos !== `${ship.cells[0]}${ship.dir}`) { el.remove(); B.shipEls.delete(n); }
+    }
+    for (const ship of want.values()) {
+      let el = B.shipEls.get(ship.name);
+      if (!el) {
+        el = makeShipEl(B, ship.name, ship.size, ship.dir, ship.cells[0][0], ship.cells[0][1]);
+        el.dataset.pos = `${ship.cells[0]}${ship.dir}`;
+        B.shipEls.set(ship.name, el);
+      }
+      const sunk = isSunk(ship);
+      const cls = ["ship-el", ship.dir];
+      if (ship === opts.sinking) cls.push("sinking");
+      else if (sunk) cls.push("sunk");
+      else if (!opts.showShips) cls.push("revealed");
+      const cn = cls.join(" ");
+      if (el.className !== cn) el.className = cn;
+      const mask = ship.cells.map(([r, c]) => side.shots[r][c] === "hit" ? 1 : 0).join("");
+      if (el.dataset.mask !== mask) {
+        el.dataset.mask = mask;
+        el.querySelector(".dmgs").innerHTML = [...mask].map((m, i) => m === "1" ? `<i class="dmg" style="--i:${i}"></i>` : "").join("");
+      }
+    }
+
+    // Placement ghost
+    if (opts.preview) {
+      const p = opts.preview;
+      const sig = `${p.name}${p.dir}${p.r},${p.c}${p.ok}`;
+      if (!B.ghost || B.ghost.dataset.sig !== sig) {
+        if (B.ghost) B.ghost.remove();
+        const def = FLEET.find(f => f.name === p.name);
+        B.ghost = makeShipEl(B, p.name, def.size, p.dir, p.r, p.c);
+        B.ghost.classList.add("ghost", p.ok ? "ok" : "bad");
+        B.ghost.dataset.sig = sig;
+      }
+    } else if (B.ghost) { B.ghost.remove(); B.ghost = null; }
+
+    FX.setEmitters(B.layer, emitters);
   }
 
-  function renderFleet(el, side) {
+  function cellCenter(name, r, c) {
+    const rect = boards[name].field.getBoundingClientRect();
+    return [rect.left + (c + .5) * rect.width / SIZE, rect.top + (r + .5) * rect.height / SIZE];
+  }
+  const cellPx = name => boards[name].field.getBoundingClientRect().width / SIZE;
+
+  // ======================================================================
+  //  Panels and status
+  // ======================================================================
+  function renderFleet(el, side, showHits) {
     el.innerHTML = "";
     for (const ship of side.ships) {
       const chip = document.createElement("span");
       chip.className = "chip" + (isSunk(ship) ? " sunk" : "");
-      const pips = Array.from({ length: ship.size }, (_, i) => `<i class="${i < ship.hits ? "h" : ""}"></i>`).join("");
+      const pips = Array.from({ length: ship.size }, (_, i) => `<i class="${showHits && i < ship.hits ? "h" : ""}"></i>`).join("");
       chip.innerHTML = `${ship.name} <span class="pips">${pips}</span>`;
       el.appendChild(chip);
-    }
-  }
-
-  function renderEnemyFleet() {
-    // Show the enemy's ships by name only; don't give away hit counts per ship.
-    els.enemyFleet.innerHTML = "";
-    for (const ship of state.enemy.ships) {
-      const chip = document.createElement("span");
-      const sunk = isSunk(ship);
-      chip.className = "chip" + (sunk ? " sunk" : "");
-      const pips = Array.from({ length: ship.size }, () => `<i></i>`).join("");
-      chip.innerHTML = `${ship.name} <span class="pips">${pips}</span>`;
-      els.enemyFleet.appendChild(chip);
     }
   }
 
@@ -600,15 +1366,9 @@
     });
   }
 
-  function setStatus(text, turn) {
-    els.statusText.textContent = text;
-    els.status.dataset.turn = turn;
-  }
-
+  function setStatus(text, turn) { els.statusText.textContent = text; els.status.dataset.turn = turn; }
   function setLastAction(html) { els.lastAction.innerHTML = html; }
 
-  // Where the selected ship would go if dropped at (r, c). Nudges it back
-  // onto the board if it would hang off the edge.
   function placementAt(r, c) {
     const def = FLEET[state.selected];
     if (state.dir === "h") c = Math.min(c, SIZE - def.size); else r = Math.min(r, SIZE - def.size);
@@ -617,22 +1377,26 @@
   }
 
   function render() {
-    document.body.className = state.phase === "setup" ? "setup" : "battle";
+    document.body.classList.toggle("setup", state.phase === "setup");
+    document.body.classList.toggle("battle", state.phase !== "setup");
     els.setupPanel.classList.toggle("hidden", state.phase !== "setup");
     els.enemyCard.classList.toggle("hidden", state.phase === "setup");
 
     let preview = null;
     if (state.phase === "setup" && state.selected !== null && state.hover) {
       const p = placementAt(state.hover[0], state.hover[1]);
-      preview = { keys: new Set(p.cells.map(([a, b]) => key(a, b))), ok: p.ok };
+      preview = { keys: new Set(p.cells.map(([a, b]) => key(a, b))), ok: p.ok, r: p.r, c: p.c, dir: state.dir, name: FLEET[state.selected].name };
     }
-    renderBoard(els.playerBoard, state.player, { showShips: true, last: state.lastShot.player, preview });
-    renderBoard(els.enemyBoard, state.enemy, { showShips: false, revealAll: state.phase === "over", last: state.lastShot.enemy });
-    els.playerBoard.classList.toggle("placing", state.phase === "setup");
+    const aim = state.aim;
+    renderBoard("player", state.player, { showShips: true, last: state.lastShot.player, preview, sinking: state.sinking,
+      aim: aim && aim.board === "player" ? aim : null });
+    renderBoard("enemy", state.enemy, { showShips: false, revealAll: state.phase === "over", last: state.lastShot.enemy, sinking: state.sinking,
+      aim: aim && aim.board === "enemy" ? aim : null });
+    boards.player.el.classList.toggle("placing", state.phase === "setup");
 
     const playerCanFire = state.phase === "battle" && state.turn === "player" && !state.busy;
-    els.enemyBoard.classList.toggle("targetable", playerCanFire);
-    els.enemyCard.classList.toggle("active", playerCanFire);
+    boards.enemy.el.classList.toggle("targetable", playerCanFire);
+    els.enemyCard.classList.toggle("active", state.phase === "battle" && state.turn === "player");
     els.playerCard.classList.toggle("active", state.phase === "battle" && state.turn === "computer");
 
     if (state.phase === "setup") {
@@ -645,32 +1409,29 @@
       const left = FLEET.length - state.player.ships.length;
       setStatus(left ? `Place your ships (${left} left)` : "Fleet ready! Press \u201cStart battle\u201d", "setup");
     } else {
-      renderFleet(els.playerFleet, state.player);
-      renderEnemyFleet();
+      renderFleet(els.playerFleet, state.player, true);
+      renderFleet(els.enemyFleet, state.enemy, false);
       els.playerSub.textContent = "The computer fires here";
     }
   }
 
-  // ---------- Setup interactions ----------
+  // ======================================================================
+  //  Setup interactions
+  // ======================================================================
   function selectNextUnplaced() {
     const idx = FLEET.findIndex(def => !state.player.ships.some(s => s.name === def.name));
     state.selected = idx === -1 ? null : idx;
   }
-
-  function shake(el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+  function shakeBoard(el) { el.classList.remove("shake-bad"); void el.offsetWidth; el.classList.add("shake-bad"); }
 
   function onPlayerBoardClick(r, c) {
     if (state.phase !== "setup") return;
     const existing = shipAt(state.player, r, c);
     if (existing && state.selected === null) { pickUp(existing); return; }
-    if (existing && state.selected !== null) {
-      // Tapping a placed ship picks it up unless the selected ship can legally go here.
-      const p = placementAt(r, c);
-      if (!p.ok) { pickUp(existing); return; }
-    }
+    if (existing && state.selected !== null && !placementAt(r, c).ok) { pickUp(existing); return; }
     if (state.selected === null) return;
     const p = placementAt(r, c);
-    if (!p.ok) { shake(els.playerBoard); return; }
+    if (!p.ok) { shakeBoard(boards.player.el); return; }
     placeShip(state.player, FLEET[state.selected], p.r, p.c, state.dir);
     state.player.ships.sort((a, b) => FLEET.findIndex(f => f.name === a.name) - FLEET.findIndex(f => f.name === b.name));
     selectNextUnplaced();
@@ -686,7 +1447,9 @@
     render();
   }
 
-  // ---------- Battle ----------
+  // ======================================================================
+  //  Battle flow (each shot: missile flight -> impact -> result)
+  // ======================================================================
   function startBattle() {
     if (state.player.ships.length !== FLEET.length) return;
     placeFleetRandomly(state.enemy);
@@ -706,32 +1469,72 @@
     return `${who} fired at <b>${where}</b> \u2014 <b class="sunk">sank ${whose} ${res.ship.name}!</b>`;
   }
 
-  function playerFire(r, c) {
-    if (state.phase !== "battle" || state.turn !== "player" || state.busy) return;
+  // Plays the impact on a board and resolves when the animation has settled.
+  async function playImpact(boardName, r, c, res, bannerText, gid) {
+    const B = boards[boardName];
+    if (res.result === "sunk") {
+      state.sinking = res.ship;
+      render();
+      await FX.sink(B.layer, r, c, res.ship, B.banner, bannerText);
+      if (gid === state.gameId) { state.sinking = null; render(); }
+    } else {
+      render();
+      await (res.result === "hit" ? FX.hit(B.layer, r, c) : FX.miss(B.layer, r, c));
+    }
+  }
+
+  async function playerFire(r, c) {
+    if (state.phase !== "battle" || state.turn !== "player" || state.busy || state.demoOpen) return;
+    if (state.enemy.shots[r][c]) return; // already fired there
+    const gid = state.gameId;
+    state.busy = true;
+    state.aim = { board: "enemy", r, c };
+    setStatus("Missile away\u2026", "player");
+    render();
+    const ready = state.player.ships.filter(s => !isSunk(s));
+    const launcher = ready.length ? ready[Math.floor(Math.random() * ready.length)] : null;
+    const mid = launcher ? launcher.cells[Math.floor(launcher.size / 2)] : [5, 5];
+    await FX.launch(cellCenter("player", mid[0], mid[1]), cellCenter("enemy", r, c), cellPx("enemy"),
+      { layer: boards.player.layer, x: mid[1] + .5, y: mid[0] + .5 });
+    if (gid !== state.gameId) return;
+    state.aim = null;
     const res = fireAt(state.enemy, r, c);
-    if (!res) return; // already fired there
     state.stats.playerShots++;
     if (res.result !== "miss") state.stats.playerHits++;
     state.lastShot.enemy = [r, c];
     setLastAction(describe("You", r, c, res));
+    setStatus(res.result === "miss" ? "Splash \u2014 you missed." : res.result === "hit" ? "Direct hit!" : `You sank the enemy ${res.ship.name}!`, "player");
+    await playImpact("enemy", r, c, res, res.ship ? `Enemy ${res.ship.name} destroyed` : "", gid);
+    if (gid !== state.gameId) return;
     if (allSunk(state.enemy)) { endGame("player"); return; }
     state.turn = "computer";
-    state.busy = true;
     setStatus("Computer is taking aim\u2026", "computer");
     render();
     state.timer = setTimeout(computerTurn, COMPUTER_DELAY);
   }
 
-  function computerTurn() {
+  async function computerTurn() {
     state.timer = null;
     if (state.phase !== "battle") return;
-    const target = computerChooseShot(state.player, state.skill);
-    const [r, c] = target;
+    if (state.demoOpen) { state.timer = setTimeout(computerTurn, 300); return; }
+    const gid = state.gameId;
+    const [r, c] = computerChooseShot(state.player, state.skill);
+    state.aim = { board: "player", r, c };
+    setStatus("Computer fired \u2014 incoming!", "computer");
+    render();
+    // Launch from a random point in enemy waters (never from a real ship, so nothing is given away)
+    const from = cellCenter("enemy", 2 + Math.random() * 6, 2 + Math.random() * 6);
+    await FX.launch(from, cellCenter("player", r, c), cellPx("player"));
+    if (gid !== state.gameId) return;
+    state.aim = null;
     const res = fireAt(state.player, r, c);
     state.stats.computerShots++;
     if (res.result !== "miss") state.stats.computerHits++;
     state.lastShot.player = [r, c];
     setLastAction(describe("Computer", r, c, res));
+    setStatus(res.result === "miss" ? "Computer missed." : res.result === "hit" ? "Computer hit your ship!" : `Computer sank your ${res.ship.name}!`, "computer");
+    await playImpact("player", r, c, res, res.ship ? `Your ${res.ship.name} was sunk` : "", gid);
+    if (gid !== state.gameId) return;
     state.busy = false;
     if (allSunk(state.player)) { endGame("computer"); return; }
     state.turn = "player";
@@ -739,16 +1542,20 @@
     render();
   }
 
+  const TROPHY = '<svg viewBox="0 0 64 64"><path d="M20 8h24v14a12 12 0 0 1-24 0z" fill="#facc15"/><path d="M20 12H10v4a10 10 0 0 0 10 10M44 12h10v4a10 10 0 0 1-10 10" stroke="#facc15" stroke-width="4" fill="none"/><rect x="29" y="34" width="6" height="10" fill="#eab308"/><rect x="20" y="44" width="24" height="8" rx="2" fill="#ca8a04"/></svg>';
+  const ANCHOR = '<svg viewBox="0 0 64 64" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"><circle cx="32" cy="12" r="5"/><path d="M32 17v38M20 26h24M10 36c0 12 10 19 22 19s22-7 22-19"/></svg>';
+
   function endGame(winner) {
     state.phase = "over";
     state.busy = false;
+    state.aim = null;
     const won = winner === "player";
     setStatus(won ? "You win! The enemy fleet is destroyed." : "The computer wins this time.", "over");
     render();
     const s = state.stats;
     const acc = s.playerShots ? Math.round((s.playerHits / s.playerShots) * 100) : 0;
     const shipsLeft = (won ? state.player : state.enemy).ships.filter(sh => !isSunk(sh)).length;
-    $("modal-icon").innerHTML = won ? '<svg viewBox="0 0 64 64"><path d="M20 8h24v14a12 12 0 0 1-24 0z" fill="#facc15"/><path d="M20 12H10v4a10 10 0 0 0 10 10M44 12h10v4a10 10 0 0 1-10 10" stroke="#facc15" stroke-width="4" fill="none"/><rect x="29" y="34" width="6" height="10" fill="#eab308"/><rect x="20" y="44" width="24" height="8" rx="2" fill="#ca8a04"/></svg>' : '<svg viewBox="0 0 64 64" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"><circle cx="32" cy="12" r="5"/><path d="M32 17v38M20 26h24M10 36c0 12 10 19 22 19s22-7 22-19"/></svg>';
+    $("modal-icon").innerHTML = won ? TROPHY : ANCHOR;
     $("modal-title").textContent = won ? "Victory!" : "Defeat";
     $("modal-text").textContent = won
       ? "You sank the entire enemy fleet. Well played, Admiral!"
@@ -757,40 +1564,124 @@
       `<div><b>${s.playerShots}</b><small>Your shots</small></div>` +
       `<div><b>${acc}%</b><small>Accuracy</small></div>` +
       `<div><b>${shipsLeft}</b><small>${won ? "Your ships left" : "Enemy ships left"}</small></div>`;
-    setTimeout(() => els.modal.classList.remove("hidden"), 600);
+    const gid = state.gameId;
+    setTimeout(() => { if (gid === state.gameId && state.phase === "over") els.modal.classList.remove("hidden"); }, 600);
   }
 
   function newGame() {
     if (state.timer) clearTimeout(state.timer);
     Object.assign(state, {
       phase: "setup", turn: "player", player: newSide(), enemy: newSide(),
-      selected: 0, dir: "h", busy: false, hover: null, timer: null,
+      selected: 0, dir: "h", busy: false, hover: null, timer: null, aim: null, sinking: null,
       lastShot: { player: null, enemy: null },
       stats: { playerShots: 0, playerHits: 0, computerShots: 0, computerHits: 0 },
+      gameId: state.gameId + 1,
     });
+    FX.clearAll();
     els.modal.classList.add("hidden");
     setLastAction("");
     render();
   }
 
-  // ---------- Wire up buttons and boards ----------
-  buildBoard(els.playerBoard, "player");
-  buildBoard(els.enemyBoard, "enemy");
+  // ======================================================================
+  //  Temporary animation demo (its own practice board; never touches the game)
+  // ======================================================================
+  const demo = { side: null, busy: false, last: null, sinking: null, aim: null };
+  function resetDemo() {
+    const side = newSide();
+    const layout = [["Carrier", 1, 1, "h"], ["Battleship", 3, 8, "v"], ["Cruiser", 4, 1, "h"], ["Submarine", 7, 2, "h"], ["Destroyer", 6, 6, "v"]];
+    for (const [name, r, c, dir] of layout) placeShip(side, FLEET.find(f => f.name === name), r, c, dir);
+    demo.side = side; demo.last = null; demo.sinking = null; demo.aim = null;
+    FX.clearAll();
+    renderDemo();
+  }
+  function renderDemo() {
+    renderBoard("demo", demo.side, { showShips: true, last: demo.last, sinking: demo.sinking, aim: demo.aim });
+    document.querySelectorAll("[data-demo]").forEach(b => { b.disabled = demo.busy; });
+  }
+  const pickOne = list => list[Math.floor(Math.random() * list.length)];
+
+  async function runDemo(kind) {
+    if (demo.busy) return;
+    let side = demo.side;
+    let target = null;
+    if (kind === "hit") {
+      let options = [];
+      side.ships.forEach(s => { if (s.hits < s.size - 1) s.cells.forEach(([r, c]) => { if (!side.shots[r][c]) options.push([r, c]); }); });
+      if (!options.length) { resetDemo(); side = demo.side; options = side.ships[0].cells.slice(0, 1); }
+      target = pickOne(options);
+    } else if (kind === "miss") {
+      let options = [];
+      for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!shipAt(side, r, c) && !side.shots[r][c]) options.push([r, c]);
+      if (options.length < 4) { for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (side.shots[r][c] === "miss") side.shots[r][c] = null; return runDemo("miss"); }
+      target = pickOne(options);
+    } else {
+      let alive = side.ships.filter(s => !isSunk(s));
+      if (!alive.length) { resetDemo(); side = demo.side; alive = side.ships.slice(); }
+      const ship = pickOne(alive);
+      // Damage every section except one, then fire the final missile at it.
+      const remaining = ship.cells.filter(([r, c]) => !side.shots[r][c]);
+      remaining.slice(0, -1).forEach(([r, c]) => fireAt(side, r, c));
+      target = remaining[remaining.length - 1];
+    }
+    demo.busy = true;
+    demo.aim = { r: target[0], c: target[1] };
+    renderDemo();
+    const card = document.querySelector(".demo-card").getBoundingClientRect();
+    await FX.launch([card.left + card.width / 2, card.bottom - 10], cellCenter("demo", target[0], target[1]), cellPx("demo"));
+    if (!state.demoOpen) { demo.busy = false; return; }
+    demo.aim = null;
+    const res = fireAt(side, target[0], target[1]);
+    demo.last = target;
+    const B = boards.demo;
+    if (res.result === "sunk") {
+      demo.sinking = res.ship; renderDemo();
+      await FX.sink(B.layer, target[0], target[1], res.ship, B.banner, `${res.ship.name} destroyed`);
+      demo.sinking = null;
+    } else {
+      renderDemo();
+      await (res.result === "hit" ? FX.hit(B.layer, target[0], target[1]) : FX.miss(B.layer, target[0], target[1]));
+    }
+    demo.busy = false;
+    renderDemo();
+  }
+
+  function openDemo() {
+    state.demoOpen = true;
+    document.body.classList.add("demo-open");
+    $("demo").classList.remove("hidden");
+    if (!demo.side) resetDemo(); else renderDemo();
+  }
+  function closeDemo() {
+    state.demoOpen = false;
+    demo.busy = false;
+    document.body.classList.remove("demo-open");
+    $("demo").classList.add("hidden");
+  }
+
+  // ======================================================================
+  //  Wire up
+  // ======================================================================
+  makeOceanTextures();
+  FX.init($("fx-global"));
+  createBoard("player", $("player-board"));
+  createBoard("enemy", $("enemy-board"));
+  createBoard("demo", $("demo-board"));
 
   const cellFromEvent = e => {
     const el = e.target.closest(".cell");
-    return el && el.dataset.r !== undefined ? [Number(el.dataset.r), Number(el.dataset.c)] : null;
+    return el ? [Number(el.dataset.r), Number(el.dataset.c)] : null;
   };
-
-  els.playerBoard.addEventListener("click", e => { const p = cellFromEvent(e); if (p) onPlayerBoardClick(...p); });
-  els.playerBoard.addEventListener("pointermove", e => {
+  const playerBoardEl = $("player-board"), enemyBoardEl = $("enemy-board");
+  playerBoardEl.addEventListener("click", e => { const p = cellFromEvent(e); if (p) onPlayerBoardClick(...p); });
+  playerBoardEl.addEventListener("pointermove", e => {
     if (state.phase !== "setup" || e.pointerType !== "mouse") return;
     const p = cellFromEvent(e);
     const same = p && state.hover && p[0] === state.hover[0] && p[1] === state.hover[1];
     if (!same) { state.hover = p; render(); }
   });
-  els.playerBoard.addEventListener("pointerleave", () => { if (state.hover) { state.hover = null; render(); } });
-  els.enemyBoard.addEventListener("click", e => { const p = cellFromEvent(e); if (p) playerFire(...p); });
+  playerBoardEl.addEventListener("pointerleave", () => { if (state.hover) { state.hover = null; render(); } });
+  enemyBoardEl.addEventListener("click", e => { const p = cellFromEvent(e); if (p) playerFire(...p); });
 
   els.shipList.addEventListener("click", e => {
     const b = e.target.closest(".ship-btn"); if (!b) return;
@@ -798,20 +1689,10 @@
     const placed = state.player.ships.find(s => s.name === FLEET[i].name);
     if (placed) pickUp(placed); else { state.selected = i; render(); }
   });
-  $("dir-seg").addEventListener("click", e => {
-    const b = e.target.closest("button"); if (!b) return;
-    state.dir = b.dataset.dir; render();
-  });
-  $("skill-seg").addEventListener("click", e => {
-    const b = e.target.closest("button"); if (!b) return;
-    state.skill = b.dataset.skill; render();
-  });
-  $("random-btn").addEventListener("click", () => {
-    placeFleetRandomly(state.player); state.selected = null; render();
-  });
-  $("clear-btn").addEventListener("click", () => {
-    state.player.ships = []; state.selected = 0; render();
-  });
+  $("dir-seg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.dir = b.dataset.dir; render(); });
+  $("skill-seg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.skill = b.dataset.skill; render(); });
+  $("random-btn").addEventListener("click", () => { placeFleetRandomly(state.player); state.selected = null; render(); });
+  $("clear-btn").addEventListener("click", () => { state.player.ships = []; state.selected = 0; render(); });
   els.startBtn.addEventListener("click", startBattle);
   $("new-game-btn").addEventListener("click", () => {
     if (state.phase === "battle" && !confirm("Abandon this battle and start a new game?")) return;
@@ -819,13 +1700,18 @@
   });
   $("play-again-btn").addEventListener("click", newGame);
   $("view-board-btn").addEventListener("click", () => els.modal.classList.add("hidden"));
+  $("demo-btn").addEventListener("click", openDemo);
+  $("demo-close").addEventListener("click", closeDemo);
+  $("demo-reset").addEventListener("click", () => { if (!demo.busy) resetDemo(); });
+  document.querySelectorAll("[data-demo]").forEach(b => b.addEventListener("click", () => runDemo(b.dataset.demo)));
   document.addEventListener("keydown", e => {
-    if (state.phase === "setup" && (e.key === "r" || e.key === "R")) { state.dir = state.dir === "h" ? "v" : "h"; render(); }
-    if (e.key === "Escape") els.modal.classList.add("hidden");
+    if (state.phase === "setup" && !state.demoOpen && (e.key === "r" || e.key === "R")) { state.dir = state.dir === "h" ? "v" : "h"; render(); }
+    if (e.key === "Escape") { els.modal.classList.add("hidden"); if (state.demoOpen) closeDemo(); }
   });
+  window.addEventListener("resize", () => render());
 
-  // Exposed only so automated tests can check the rules.
-  window.__battleship = { state, fireAt, computerChooseShot, placeFleetRandomly, newSide, FLEET, SIZE, allSunk, isSunk };
+  // Exposed only so automated tests can check the rules and effects.
+  window.__battleship = { state, demo, fireAt, computerChooseShot, placeFleetRandomly, newSide, FLEET, SIZE, allSunk, isSunk, fx: FX };
 
   render();
 })();

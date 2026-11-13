@@ -101,35 +101,59 @@ with sync_playwright() as p:
     pg.click('#start-btn')
     check(pg.locator('#enemy-card').is_visible() and not pg.locator('#setup-panel').is_visible(), 'Battle screen shown')
     check('Your turn' in pg.inner_text('#status-text'), 'Status says it is your turn')
-    check(pg.locator('#enemy-board .cell.ship').count() == 0, 'Enemy ships are hidden')
+    check(pg.locator('#enemy-board .ship-el').count() == 0, 'Enemy ships are hidden')
     enemy = S('window.__battleship.state.enemy.ships.map(s=>s.cells)')
     targets = [c for s in enemy for c in s]
     # Fire one miss first to watch the turn swap
     occupied = {(r, c) for r, c in targets}
     miss = next((r, c) for r in range(10) for c in range(10) if (r, c) not in occupied)
     cell('enemy', *miss).click()
-    check(cell('enemy', *miss).get_attribute('class').count('miss') == 1, 'Miss shown on enemy board')
-    check('Computer' in pg.inner_text('#status-text'), 'Turn passes to computer')
-    # clicking during computer turn should do nothing
+    pg.wait_for_timeout(120)
+    st = S('window.__battleship.fx.stats()')
+    check(any(l['missiles'] for l in st), f'Missile is in flight after firing {st}')
+    check('locked' in cell('enemy', *miss).get_attribute('class'), 'Target square is locked while the missile flies')
+    cell('enemy', *targets[0]).click()
+    check(S('window.__battleship.state.enemy.shots[%d][%d]' % tuple(targets[0])) is None, 'Cannot fire a second missile while one is in flight')
+    pg.wait_for_function('document.querySelector(\'#enemy-board .cell[data-r="%d"][data-c="%d"]\').classList.contains("miss")' % miss, timeout=5000)
+    check(True, 'Miss shown on enemy board after impact')
+    st = {l['board']: l for l in S('window.__battleship.fx.stats()')}
+    check(st['enemy-board']['parts'] > 30, f"Splash particles spawned on miss ({st['enemy-board']['parts']})")
+    pg.wait_for_function('document.querySelector("#status-text").textContent.includes("Computer")', timeout=5000)
+    check(True, 'Turn passes to computer')
     cell('enemy', *targets[0]).click()
     check(S('window.__battleship.state.enemy.shots[%d][%d]' % tuple(targets[0])) is None, 'Cannot fire during computer turn')
-    pg.wait_for_function('window.__battleship.state.turn === "player"')
+    pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
     check(S('window.__battleship.state.stats.computerShots') == 1, 'Computer fired exactly once')
     # clicking an already-shot square does nothing
     cell('enemy', *miss).click()
     check(S('window.__battleship.state.turn') == 'player', 'Re-firing at a used square is ignored (still your turn)')
     for i, (r, c) in enumerate(targets):
-        pg.wait_for_function('window.__battleship.state.turn === "player" || window.__battleship.state.phase === "over"')
+        pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
         if S('window.__battleship.state.phase') == 'over': break
         cell('enemy', r, c).click()
+        if i == 0:
+            pg.wait_for_function('document.querySelector(\'#enemy-board .cell[data-r="%d"][data-c="%d"]\').classList.contains("hit")' % (r, c), timeout=5000)
+            pg.wait_for_timeout(80)
+            st = {l['board']: l for l in S('window.__battleship.fx.stats()')}
+            check(st['enemy-board']['parts'] > 40, f"Explosion particles spawned on hit ({st['enemy-board']['parts']})")
+            check(S('document.getElementById("main").classList.contains("shake-s")'), 'Screen shakes on hit')
+            pg.screenshot(path=OUT + 'hit_explosion.png')
+        if i == len(enemy[0]) - 1:
+            pg.wait_for_function('document.querySelector("#enemy-board .ship-el.sinking")', timeout=5000)
+            check(True, 'Sinking animation starts when the last section is hit')
+            check(pg.locator('#enemy-board .banner.show').count() == 1, 'Destroyed banner shown')
+            check('sank the enemy' in pg.inner_text('#last-action'), 'Sinking is announced')
+            pg.wait_for_timeout(700)
+            pg.screenshot(path=OUT + 'sinking.png')
+        pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
         if i == 1:
             cls = cell('enemy', *targets[0]).get_attribute('class')
             check('hit' in cls or 'sunk' in cls, 'Hit shown on enemy board')
             pg.screenshot(path=OUT + 'battle_landscape.png')
         if i == len(enemy[0]) - 1:
             check(cell('enemy', *targets[0]).get_attribute('class').find('sunk') >= 0, 'Sunk ship shown on enemy board')
+            check(pg.locator('#enemy-board .ship-el.sunk').count() == 1, 'Sunk enemy ship stays visible as a wreck')
             check(pg.locator('#enemy-fleet .chip.sunk').count() == 1, 'Sunk ship crossed off enemy fleet list')
-            check('sank the enemy' in pg.inner_text('#last-action'), 'Sinking is announced')
     pg.wait_for_selector('#modal:not(.hidden)')
     check(pg.inner_text('#modal-title') == 'Victory!', 'Winner announced: player')
     check('You win' in pg.inner_text('#status-text'), 'Status shows you win')
@@ -147,18 +171,19 @@ with sync_playwright() as p:
     misses = [(r, c) for r in range(10) for c in range(10) if (r, c) not in enemy]
     shotsTaken = 0
     for (r, c) in misses:
-        pg.wait_for_function('window.__battleship.state.turn === "player" || window.__battleship.state.phase === "over"', timeout=5000)
+        pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
         if S('window.__battleship.state.phase') == 'over': break
         cell('enemy', r, c).click(); shotsTaken += 1
         if shotsTaken == 20:
-            pg.wait_for_function('window.__battleship.state.turn === "player"')
+            pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
             pg.screenshot(path=OUT + 'battle_portrait.png')
     pg.wait_for_selector('#modal:not(.hidden)')
     check(pg.inner_text('#modal-title') == 'Defeat', f'Winner announced: computer (after {shotsTaken} player shots)')
     st = S('window.__battleship.state.stats')
     check(st['playerShots'] == st['computerShots'], f'Turns alternated evenly {st}')
     pg.click('#view-board-btn')
-    check(pg.locator('#enemy-board .cell.revealed').count() == 17, 'Enemy ships revealed after losing')
+    check(pg.locator('#enemy-board .ship-el.revealed').count() == 5, 'Enemy ships revealed after losing')
+    check(pg.locator('#player-board .ship-el.sunk').count() == 5, 'All your sunk ships shown as wrecks')
     pg.screenshot(path=OUT + 'lose_portrait.png')
 
     # ---------- 5. Touch / phone ----------
@@ -169,8 +194,9 @@ with sync_playwright() as p:
     check(tp.evaluate('window.__battleship.state.player.ships.length') == 1, 'Tap places ship on touch device')
     tp.click('#random-btn'); tp.click('#start-btn')
     tp.locator('#enemy-board .cell[data-r="0"][data-c="0"]').tap()
-    check(tp.evaluate('window.__battleship.state.stats.playerShots') == 1, 'Tap fires on touch device')
-    tp.wait_for_function('window.__battleship.state.turn === "player"')
+    tp.wait_for_function('window.__battleship.state.stats.playerShots === 1', timeout=5000)
+    check(True, 'Tap fires on touch device')
+    tp.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
     tp.screenshot(path=OUT + 'phone.png', full_page=True)
 
     # boards fit on common tablet/phone screens without scrolling
@@ -194,6 +220,89 @@ with sync_playwright() as p:
         tp2.screenshot(path=OUT + f'battle_{w}x{h}.png')
         tp2.click('#new-game-btn') if False else None
         tp2.context.close()
+
+    # ---------- 6. Animation demo ----------
+    pg = b.new_page(viewport={'width': 1024, 'height': 768})
+    pg.on('pageerror', lambda e: errors.append(str(e)))
+    pg.goto(URL); pg.click('#random-btn'); pg.click('#start-btn')
+    pg.locator('#enemy-board .cell[data-r="0"][data-c="0"]').click()
+    pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
+    before = S2 = pg.evaluate('JSON.stringify([window.__battleship.state.stats, window.__battleship.state.enemy.shots, window.__battleship.state.player.shots, window.__battleship.state.turn])')
+    pg.click('#demo-btn')
+    check(pg.locator('#demo').is_visible(), 'Demo panel opens')
+    check(pg.locator('#demo-board .ship-el').count() == 5, 'Demo board shows all five ship classes')
+    DEMO_IDLE = 'window.__battleship.demo.busy === false'
+    for kind in ['hit', 'miss', 'sink', 'hit', 'miss', 'sink', 'sink', 'sink', 'sink', 'sink', 'hit']:
+        shots_before = pg.evaluate('window.__battleship.demo.side.shots.flat().filter(Boolean).length')
+        pg.click(f'[data-demo="{kind}"]')
+        pg.wait_for_timeout(100)
+        check(any(l['missiles'] for l in pg.evaluate('window.__battleship.fx.stats()')), f'Demo {kind.upper()}: missile launched')
+        if kind == 'sink':
+            pg.wait_for_function('document.querySelector("#demo-board .ship-el.sinking")', timeout=5000)
+            check(True, 'Demo SINK: ship sinking animation runs')
+        pg.wait_for_function(DEMO_IDLE, timeout=10000)
+        if kind == 'hit':
+            check(pg.locator('#demo-board .dmg').count() >= 1, 'Demo HIT: damage visible on ship')
+        if kind == 'miss':
+            check(pg.locator('#demo-board .cell.miss').count() >= 1, 'Demo MISS: splash marker left on water')
+        if kind == 'sink':
+            check(pg.locator('#demo-board .ship-el.sunk').count() >= 1, 'Demo SINK: wreck remains afterwards')
+    pg.click('#demo-reset')
+    check(pg.locator('#demo-board .ship-el.sunk').count() == 0 and pg.locator('#demo-board .dmg').count() == 0, 'Demo reset restores practice board')
+    pg.click('#demo-close')
+    after = pg.evaluate('JSON.stringify([window.__battleship.state.stats, window.__battleship.state.enemy.shots, window.__battleship.state.player.shots, window.__battleship.state.turn])')
+    check(before == after, 'Demo did not change the real game')
+    pg.locator('#enemy-board .cell[data-r="0"][data-c="1"]').click()
+    pg.wait_for_function('window.__battleship.state.stats.playerShots === 2', timeout=5000)
+    check(True, 'Game continues normally after using the demo')
+    # Demo pauses the computer: open demo during the computer's turn
+    pg.wait_for_function('window.__battleship.state.turn === "computer"', timeout=5000)
+    pg.click('#demo-btn')
+    cs = pg.evaluate('window.__battleship.state.stats.computerShots')
+    pg.wait_for_timeout(2500)
+    check(pg.evaluate('window.__battleship.state.stats.computerShots') == cs, 'Computer waits while the demo is open')
+    pg.click('#demo-close')
+    pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
+    check(pg.evaluate('window.__battleship.state.stats.computerShots') == cs + 1, 'Computer resumes after closing the demo')
+
+    # ---------- 7. Smoothness (frames per second during heavy effects) ----------
+    for ctx_ in list(b.contexts): ctx_.close()
+    b.close()
+    b = p.chromium.launch(executable_path=CHROME, headless=True) if CHROME else p.chromium.launch(headless=True)
+    for (w, h, name) in [(1280, 800, 'desktop'), (1024, 768, 'tablet landscape'), (768, 1024, 'tablet portrait')]:
+        fp = b.new_page(viewport={'width': w, 'height': h})
+        fp.goto(URL); fp.click('#demo-btn')
+        fp.evaluate("""() => { window.__frames = []; let last = performance.now();
+            const tick = (t) => { window.__frames.push(t - last); last = t; if (window.__frames.length < 400) requestAnimationFrame(tick); };
+            requestAnimationFrame(tick); }""")
+        fp.click('[data-demo="sink"]')
+        fp.wait_for_timeout(2600)
+        frames = fp.evaluate('window.__frames.slice(5)')
+        avg = sum(frames) / len(frames); fps = 1000 / avg; worst = max(frames)
+        print(f'   {name}: {fps:.0f} fps average, slowest frame {worst:.0f} ms during SINK')
+        check(fps >= 40, f'{name}: smooth animation during sinking ({fps:.0f} fps)')
+        fp.close()
+
+    # ---------- 8. Reduced motion ----------
+    rm = b.new_context(viewport={'width': 1024, 'height': 768}, reduced_motion='reduce').new_page()
+    rm.on('pageerror', lambda e: errors.append(str(e)))
+    rm.goto(URL); rm.click('#random-btn'); rm.click('#start-btn')
+    tg = rm.evaluate('window.__battleship.state.enemy.ships[4].cells')
+    t0 = time.time()
+    rm.locator(f'#enemy-board .cell[data-r="{tg[0][0]}"][data-c="{tg[0][1]}"]').click()
+    rm.wait_for_function('window.__battleship.state.stats.playerShots === 1', timeout=3000)
+    check(time.time() - t0 < 0.5, f'Reduced motion: result shown immediately ({time.time() - t0:.2f}s)')
+    check(not any(l['missiles'] for l in rm.evaluate('window.__battleship.fx.stats()')), 'Reduced motion: no flying missile')
+    check(all(l['parts'] == 0 for l in rm.evaluate('window.__battleship.fx.stats()')), 'Reduced motion: no particle effects')
+    check(not rm.evaluate('document.getElementById("main").className'), 'Reduced motion: no screen shake')
+    anim = rm.evaluate('getComputedStyle(document.querySelector("#enemy-board .ocean .water")).animationName')
+    check(anim == 'none', f'Reduced motion: ocean is still ({anim})')
+    rm.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=8000)
+    rm.locator(f'#enemy-board .cell[data-r="{tg[1][0]}"][data-c="{tg[1][1]}"]').click()
+    rm.wait_for_function('document.querySelector("#enemy-board .ship-el.sinking, #enemy-board .ship-el.sunk")', timeout=3000)
+    check(True, 'Reduced motion: sunk ship still clearly shown')
+    rm.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=8000)
+    rm.screenshot(path=OUT + 'reduced_motion.png')
 
     check(not errors, f'No JavaScript errors {errors}')
     b.close()
