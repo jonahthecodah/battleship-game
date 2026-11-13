@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1726">
 <title>Battleship</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230ea5e9'/%3E%3Cpath d='M10 36h44l-6 10H16z' fill='white'/%3E%3C/svg%3E">
 <style>
   :root {
     --bg: #0b1726;
@@ -25,7 +26,7 @@
     --good: #22c55e;
     --bad: #f43f5e;
     --radius: 14px;
-    --bsize: min(92vw, 520px);
+    --board-size: min(92vw, 520px);
     --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -43,7 +44,7 @@
 
   header {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 14px 20px; max-width: 1200px; margin: 0 auto;
+    padding: 10px 20px; max-width: 1200px; margin: 0 auto;
   }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand svg { width: 34px; height: 34px; }
@@ -68,28 +69,32 @@
   .status-inner {
     display: flex; align-items: center; justify-content: center; gap: 10px;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 12px 16px; font-size: 1.1rem; font-weight: 600; text-align: center; min-height: 52px;
+    padding: 10px 16px; font-size: 1.1rem; font-weight: 600; text-align: center; min-height: 48px;
   }
   .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
   .status[data-turn="player"] .dot { background: var(--good); box-shadow: 0 0 0 4px rgba(34,197,94,.2); }
   .status[data-turn="computer"] .dot { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.2); animation: pulse 1s infinite; }
   .status[data-turn="over"] .dot { background: var(--accent); }
-  .last-action { text-align: center; color: var(--muted); font-size: .95rem; min-height: 1.4em; margin-top: 8px; }
+  .last-action { text-align: center; color: var(--muted); font-size: .95rem; min-height: 1.4em; margin-top: 6px; }
+  .last-action:empty { display: none; }
   .last-action b.hit { color: #fca5a5; } .last-action b.miss { color: #cbd5e1; } .last-action b.sunk { color: #fb7185; }
 
   main {
-    max-width: 1200px; margin: 0 auto; padding: 0 20px 28px;
-    display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 22px;
+    max-width: 1200px; margin: 0 auto; padding: 0 20px 24px;
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px;
   }
 
   .panel, .board-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 16px;
+    padding: 12px;
   }
+  #enemy-card { --bsize: var(--enemy-size, var(--board-size)); }
+  #player-card { --bsize: var(--player-size, var(--board-size)); }
   .board-card { transition: box-shadow .25s, border-color .25s; }
   .board-card.active { border-color: rgba(56,189,248,.6); box-shadow: 0 0 0 3px rgba(56,189,248,.18), 0 10px 30px rgba(0,0,0,.3); }
-  .board-card h2, .panel h2 { margin: 0 0 4px; font-size: 1.1rem; }
-  .board-card .sub { margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+  .board-card h2, .panel h2 { margin: 0; font-size: 1.05rem; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .board-card .sub { margin: 0; color: var(--muted); font-size: .85rem; text-align: right; }
 
   /* ---------- Board ---------- */
   .board {
@@ -140,7 +145,8 @@
     background: none; box-shadow: none; width: auto; height: auto;
   }
   /* Enemy ships revealed at the end of the game */
-  .cell.revealed::before { opacity: .55; }
+  .cell.revealed::before { background: linear-gradient(180deg, #7d91a8, #63778d); }
+  .cell.revealed.v::before { background: linear-gradient(90deg, #7d91a8, #63778d); }
 
   .cell.last { outline: 2px solid #fde047; outline-offset: -2px; z-index: 1; }
   .cell.anim::after { animation: pop .35s ease-out; }
@@ -161,24 +167,25 @@
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 
   /* ---------- Fleet status ---------- */
-  .fleet { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; max-width: var(--bsize); }
+  .fleet { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-width: var(--bsize); }
+  .fleet:empty { display: none; }
   .chip {
-    display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px;
-    background: var(--surface-2); border: 1px solid var(--border); font-size: .8rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border); font-size: .74rem; font-weight: 600;
   }
   .chip .pips { display: inline-flex; gap: 2px; }
-  .chip .pips i { width: 7px; height: 7px; border-radius: 2px; background: var(--ship); display: block; }
+  .chip .pips i { width: 6px; height: 6px; border-radius: 2px; background: var(--ship); display: block; }
   .chip .pips i.h { background: var(--hit); }
   .chip.sunk { opacity: .55; text-decoration: line-through; }
   .chip.sunk .pips i { background: var(--sunk); }
 
   /* ---------- Setup panel ---------- */
-  .panel { width: min(92vw, 360px); display: flex; flex-direction: column; gap: 14px; }
-  .panel p { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.45; }
-  .ship-list { display: flex; flex-direction: column; gap: 8px; }
+  .panel { width: min(92vw, 350px); display: flex; flex-direction: column; gap: 12px; }
+  .panel p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; line-height: 1.4; }
+  .ship-list { display: flex; flex-direction: column; gap: 6px; }
   .ship-btn {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    width: 100%; padding: 10px 12px; min-height: 48px; border-radius: 10px; cursor: pointer;
+    width: 100%; padding: 8px 12px; min-height: 44px; border-radius: 10px; cursor: pointer;
     background: var(--surface-2); border: 2px solid transparent; text-align: left;
   }
   .ship-btn .name { font-weight: 600; }
@@ -187,13 +194,16 @@
   .ship-btn .pips i { width: 14px; height: 14px; border-radius: 3px; background: var(--ship); display: block; }
   .ship-btn.selected { border-color: var(--accent); background: #1d3b5f; }
   .ship-btn.placed { opacity: .6; }
-  .ship-btn.placed .name::after { content: "  \2713 placed"; color: var(--good); font-size: .8rem; font-weight: 600; }
+  .ship-btn .done { display: none; color: var(--good); font-size: .85rem; font-weight: 600; margin-left: 6px; }
+  .ship-btn.placed .done { display: inline; }
+  .ship-btn.placed .size { display: none; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .controls { display: flex; flex-direction: column; gap: 12px; }
   .row .btn { flex: 1 1 auto; }
   .seg { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; border: 1px solid var(--border); }
   .seg button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--muted); min-height: 40px; }
   .seg button.on { background: var(--accent-strong); color: #04131f; }
-  .field-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+  .field-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-bottom: 5px; }
   #start-btn { font-size: 1.05rem; min-height: 52px; }
 
   /* ---------- Legend ---------- */
@@ -212,7 +222,8 @@
     padding: 28px; width: min(92vw, 420px); text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5);
     animation: pop .3s ease-out;
   }
-  .modal-card .big { font-size: 3rem; line-height: 1; }
+  .modal-card .big { line-height: 0; }
+  .modal-card .big svg { width: 64px; height: 64px; }
   .modal-card h2 { margin: 10px 0 6px; font-size: 1.8rem; }
   .modal-card p { color: var(--muted); margin: 0 0 18px; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
@@ -222,16 +233,38 @@
 
   .hidden { display: none !important; }
 
-  /* Battle layout: fit both boards on a tablet screen */
-  body.battle { --bsize: min(90vw, calc((100dvh - 330px) / 2), 520px); }
-  @media (min-width: 760px) and (orientation: landscape) {
-    body.battle { --bsize: min(calc((100vw - 120px) / 2), calc(100dvh - 300px), 540px); }
+  /* Board sizes: fit everything on a tablet screen without scrolling */
+  body.setup { --board-size: min(92vw, calc(100dvh - 190px), 520px); }
+  /* Portrait: big enemy board on top, smaller view of your own fleet below */
+  body.battle {
+    --enemy-size: min(92vw, calc((100dvh - 370px) * 0.62), 560px);
+    --player-size: min(92vw, calc((100dvh - 370px) * 0.38), 400px);
   }
-  @media (min-width: 760px) and (orientation: portrait) {
-    body.battle { --bsize: min(80vw, calc((100dvh - 330px) / 2), 520px); }
+  @media (orientation: portrait) { body.battle #player-fleet { display: none; } }
+  /* Landscape: both boards side by side, same size */
+  @media (orientation: landscape) and (min-width: 700px) {
+    body.battle { --enemy-size: var(--board-size); --player-size: var(--board-size);
+      --board-size: min(calc((100vw - 130px) / 2), calc(100dvh - 270px), 540px); }
   }
-  body.setup { --bsize: min(92vw, calc(100dvh - 200px), 520px); }
-  @media (max-width: 760px) { body.setup { --bsize: min(92vw, 520px); } }
+  /* Narrow screens during setup: compact controls above the board */
+  @media (max-width: 860px) {
+    body.setup { --board-size: min(92vw, max(300px, calc(100dvh - 590px)), 520px); }
+    .panel { width: min(92vw, 560px); }
+    .ship-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+    .ship-btn { flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px 10px; }
+    .ship-btn .name { font-size: .9rem; }
+    .ship-btn .size, .ship-btn .done-word { display: none; }
+    .seg button { font-size: .9rem; }
+    .ship-btn .pips i { width: 10px; height: 10px; }
+    .panel .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  }
+  /* Phones: enemy board fills the screen, scroll down to see your fleet */
+  @media (max-width: 600px) {
+    body.battle { --enemy-size: min(92vw, calc(100dvh - 250px)); --player-size: min(80vw, 320px); }
+    .seg button { font-size: .85rem; padding: 6px; }
+    body.setup #player-sub { display: none; }
+    .board-card { margin: 0 auto; }
+  }
   @media (max-width: 520px) {
     header { padding: 12px 14px; } main { padding: 0 12px 24px; gap: 14px; } .status { padding: 0 12px; }
     .board-card, .panel { padding: 12px; } h1 { font-size: 1.2rem; }
@@ -256,19 +289,16 @@
     <section class="panel" id="setup-panel">
       <div>
         <h2>Place your fleet</h2>
-        <p>Choose a ship below, then tap a square on your board to place it. Tap a ship on the board to pick it up and move it.</p>
+        <p>Pick a ship, then tap your board to place it. Tap a placed ship to move it.</p>
       </div>
       <div class="ship-list" id="ship-list"></div>
+      <div class="controls">
       <div>
         <div class="field-label">Direction</div>
         <div class="seg" id="dir-seg">
           <button data-dir="h" class="on">&#8596; Horizontal</button>
           <button data-dir="v">&#8597; Vertical</button>
         </div>
-      </div>
-      <div class="row">
-        <button class="btn" id="random-btn">Place randomly</button>
-        <button class="btn" id="clear-btn">Clear board</button>
       </div>
       <div>
         <div class="field-label">Computer skill</div>
@@ -277,19 +307,22 @@
           <button data-skill="smart" class="on">Smart</button>
         </div>
       </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="random-btn">Place randomly</button>
+        <button class="btn" id="clear-btn">Clear board</button>
+      </div>
       <button class="btn primary" id="start-btn" disabled>Start battle</button>
     </section>
 
     <section class="board-card hidden" id="enemy-card">
-      <h2>Enemy waters</h2>
-      <p class="sub">Tap a square to fire</p>
+      <div class="card-head"><h2>Enemy waters</h2><p class="sub">Tap a square to fire</p></div>
       <div class="board" id="enemy-board" aria-label="Enemy board"></div>
       <div class="fleet" id="enemy-fleet"></div>
     </section>
 
     <section class="board-card" id="player-card">
-      <h2>Your fleet</h2>
-      <p class="sub" id="player-sub">Your ships, as the computer sees them being hit</p>
+      <div class="card-head"><h2>Your fleet</h2><p class="sub" id="player-sub"></p></div>
       <div class="board" id="player-board" aria-label="Your board"></div>
       <div class="fleet" id="player-fleet"></div>
     </section>
@@ -561,7 +594,7 @@
       const placed = state.player.ships.some(s => s.name === def.name);
       b.className = "ship-btn" + (placed ? " placed" : "") + (state.selected === i ? " selected" : "");
       b.dataset.index = i;
-      b.innerHTML = `<span><span class="name">${def.name}</span><span class="size">${def.size} squares</span></span>
+      b.innerHTML = `<span><span class="name">${def.name}</span><span class="size">${def.size} squares</span><span class="done">\u2713<span class="done-word"> Placed</span></span></span>
         <span class="pips">${"<i></i>".repeat(def.size)}</span>`;
       els.shipList.appendChild(b);
     });
@@ -715,7 +748,7 @@
     const s = state.stats;
     const acc = s.playerShots ? Math.round((s.playerHits / s.playerShots) * 100) : 0;
     const shipsLeft = (won ? state.player : state.enemy).ships.filter(sh => !isSunk(sh)).length;
-    $("modal-icon").textContent = won ? "\uD83C\uDFC6" : "\u2693";
+    $("modal-icon").innerHTML = won ? '<svg viewBox="0 0 64 64"><path d="M20 8h24v14a12 12 0 0 1-24 0z" fill="#facc15"/><path d="M20 12H10v4a10 10 0 0 0 10 10M44 12h10v4a10 10 0 0 1-10 10" stroke="#facc15" stroke-width="4" fill="none"/><rect x="29" y="34" width="6" height="10" fill="#eab308"/><rect x="20" y="44" width="24" height="8" rx="2" fill="#ca8a04"/></svg>' : '<svg viewBox="0 0 64 64" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"><circle cx="32" cy="12" r="5"/><path d="M32 17v38M20 26h24M10 36c0 12 10 19 22 19s22-7 22-19"/></svg>';
     $("modal-title").textContent = won ? "Victory!" : "Defeat";
     $("modal-text").textContent = won
       ? "You sank the entire enemy fleet. Well played, Admiral!"
