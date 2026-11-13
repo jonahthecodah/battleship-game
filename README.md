@@ -14,6 +14,9 @@ A fully playable Battleship game for the web browser: you against the computer o
 - **Turn display and winner:** the bar at the top always shows whose turn it is and what the last shot did. When one fleet is completely sunk, the winner is announced along with your stats.
 - **Two difficulty levels:** *Easy* fires mostly at random. *Smart* works out where your ships are most likely to be, like a good human player would. It never peeks at your ships.
 
+- **Tactical interface:** fleet-strength meters for both sides, a turn counter, a targeting reticle with coordinates that follows your mouse, a radar sweep over enemy waters, floating HIT/MISS labels, and a "Battle stations" intro.
+- **Sound effects:** missile launches, explosions, splashes, sinking, and victory/defeat music, all generated in the browser. Use the speaker button to mute or unmute; your choice is remembered.
+- **Cinematic victory and defeat screens** with battle statistics (shots, hits, accuracy, ships sunk and lost, battle time).
 - **Animation demo (temporary):** the "Animation demo" button opens a practice board with HIT, MISS and SINK SHIP buttons to replay each effect. It never affects the real game.
 - **Reduced motion:** if your device is set to reduce motion, the game skips missiles, shaking and sinking motion and shows results instantly.
 

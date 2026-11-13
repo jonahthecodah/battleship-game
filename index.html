@@ -198,8 +198,8 @@
     box-shadow: inset 0 0 0 1px rgba(63, 208, 255, .35), 0 0 0 1px rgba(0, 0, 0, .5), 0 12px 30px rgba(0, 0, 0, .55);
   }
   .ocean i { position: absolute; left: 0; top: 0; width: 200%; height: 200%; pointer-events: none; will-change: transform; }
-  .ocean .water   { background-image: var(--tex-water); background-size: 25% 25%; mix-blend-mode: overlay; opacity: .7; animation: drift-a 60s linear infinite; }
-  .ocean .caustic { background-image: var(--tex-caustic); background-size: 25% 25%; mix-blend-mode: screen; opacity: .16; animation: drift-b 26s linear infinite; }
+  .ocean .water   { background-image: var(--tex-water); background-size: 25% 25%; opacity: .75; animation: drift-a 60s linear infinite; }
+  .ocean .caustic { background-image: var(--tex-caustic); background-size: 25% 25%; opacity: .14; animation: drift-b 26s linear infinite; }
   .ocean .caustic.two { background-size: 20% 20%; opacity: .10; animation: drift-c 34s linear infinite; }
   .ocean .swell {
     background: linear-gradient(45deg, transparent 0 38%, rgba(190, 235, 255, .07) 50%, transparent 62%) 0 0 / 25% 25%;
@@ -520,7 +520,7 @@
   .radar i {
     position: absolute; left: 50%; top: 50%; width: 150%; height: 150%; margin: -75% 0 0 -75%; border-radius: 50%;
     background: conic-gradient(from 0deg, transparent 0deg 290deg, rgba(63, 208, 255, .05) 310deg, rgba(63, 208, 255, .2) 352deg, rgba(170, 240, 255, .5) 359.5deg, transparent 360deg);
-    mix-blend-mode: screen; animation: sweep 5s linear infinite; will-change: transform;
+    animation: sweep 5s linear infinite; will-change: transform;
   }
   @keyframes sweep { to { transform: rotate(360deg); } }
 
@@ -609,6 +609,9 @@
     body.setup #player-sub { display: none; }
     .board-card { margin: 0 auto; }
     .btn.demo-open .long { display: none; }
+  }
+  @media (max-width: 460px) {
+    .brand-text { display: none; }
   }
   @media (max-width: 520px) {
     header { padding: 12px 14px; } main { padding: 0 12px 24px; gap: 14px; } .status { padding: 0 12px; }
@@ -954,8 +957,10 @@
       let w = 0, amp = 0.55, tot = 0;
       for (const f of oct) { w += f(u, v) * amp; tot += amp; amp *= 0.5; }
       w /= tot;
-      const g = Math.max(0, Math.min(255, 128 + (w - 0.5) * 230));
-      wImg.data[i] = wImg.data[i + 1] = wImg.data[i + 2] = g; wImg.data[i + 3] = 255;
+      // Pre-tinted light/dark patches (normal alpha blending is far cheaper than CSS blend modes)
+      const dv = Math.max(-1, Math.min(1, (w - 0.5) * 2.3));
+      if (dv > 0) { wImg.data[i] = 150; wImg.data[i + 1] = 215; wImg.data[i + 2] = 255; wImg.data[i + 3] = Math.round(dv * 95); }
+      else { wImg.data[i] = 0; wImg.data[i + 1] = 8; wImg.data[i + 2] = 22; wImg.data[i + 3] = Math.round(-dv * 150); }
       const wu = u + 0.12 * warpA(u, v), wv = v + 0.12 * warpB(u, v);
       const r1 = 1 - Math.abs(2 * ridgeA(wu, wv) - 1);
       const r2 = 1 - Math.abs(2 * ridgeB(wu + 0.3, wv + 0.7) - 1);
