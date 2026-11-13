@@ -299,6 +299,8 @@
   .cell.locked { background: rgba(255, 90, 54, .16); }
   @keyframes lock { from { transform: scale(1.15); opacity: .6; } to { transform: scale(.9); opacity: 1; } }
 
+  .cell:focus { outline: none; }
+  .cell:focus-visible { box-shadow: inset 0 0 0 2px #fff, 0 0 12px rgba(63, 208, 255, .8); z-index: 3; }
   .board.targetable .cell.open { cursor: crosshair; }
   .board.targetable .cell.open:hover { background: rgba(63, 208, 255, .16); box-shadow: inset 0 0 0 1.5px rgba(63, 208, 255, .8); }
   .board.placing .cell { cursor: pointer; }
@@ -1104,6 +1106,9 @@
   // ======================================================================
   const Sound = (() => {
     let ctx = null, master = null, noiseBuf = null;
+    const live = new Set(), timers = new Set();
+    const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); };
+    const track = node => { live.add(node); node.onended = () => live.delete(node); };
     let muted = false;
     try { muted = localStorage.getItem("battleship-muted") === "1"; } catch (e) { /* storage unavailable */ }
 
@@ -1136,7 +1141,7 @@
       f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
       const g = c.createGain(); env(g, t, attack, gain, dur);
       src.connect(f); f.connect(g); g.connect(master);
-      src.start(t, Math.random()); src.stop(t + dur + 0.05);
+      src.start(t, Math.random()); src.stop(t + dur + 0.05); track(src);
     }
     function tone({ at = 0, dur = 0.3, type = "sine", f0 = 440, f1 = f0, gain = 0.2, attack = 0.005 }) {
       const c = ac(); if (!c) return;
@@ -1145,7 +1150,7 @@
       o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
       const g = c.createGain(); env(g, t, attack, gain, dur);
       o.connect(g); g.connect(master);
-      o.start(t); o.stop(t + dur + 0.05);
+      o.start(t); o.stop(t + dur + 0.05); track(o);
     }
     const S = {
       get muted() { return muted; },
@@ -1155,6 +1160,11 @@
         if (ctx) { if (m) ctx.suspend(); else ctx.resume(); }
       },
       unlock() { ac(); },
+      // Stop every scheduled or playing sound (used when a game is abandoned or restarted)
+      cancel() {
+        timers.forEach(clearTimeout); timers.clear();
+        live.forEach(n => { try { n.stop(); } catch (e) { /* already stopped */ } }); live.clear();
+      },
       click() { tone({ type: "square", f0: 1300, f1: 900, dur: 0.05, gain: 0.035 }); },
       ping() { tone({ f0: 1400, f1: 1350, dur: 0.5, gain: 0.06, attack: 0.002 }); tone({ at: 0.12, f0: 1400, f1: 1350, dur: 0.35, gain: 0.025 }); },
       launch() {
@@ -1175,7 +1185,7 @@
       },
       sink() {
         S.boom(true);
-        [0.2, 0.36, 0.52, 0.7].forEach(at => setTimeout(() => S.boom(false), at * 1000));
+        [0.2, 0.36, 0.52, 0.7].forEach(at => later(() => S.boom(false), at * 1000));
         tone({ at: 0.6, type: "sawtooth", f0: 70, f1: 28, dur: 2.4, gain: 0.12, attack: 0.3 });
         noise({ at: 0.5, type: "lowpass", f0: 500, f1: 90, dur: 2.6, gain: 0.35, attack: 0.3 });
         for (let i = 0; i < 9; i++) tone({ at: 1 + Math.random() * 1.6, f0: 250 + Math.random() * 450, f1: 600 + Math.random() * 500, dur: 0.07, gain: 0.04 });
@@ -1225,6 +1235,8 @@
 
     const layers = [];
     let globalLayer = null;
+    const timers = new Set();
+    const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); };
 
     function makeLayer(canvas, field) {
       const L = { canvas, ctx: canvas.getContext("2d"), field, margin: 0.15, parts: [], emitters: new Map(), missiles: [], drawn: false };
@@ -1294,6 +1306,10 @@
 
     function drawMissile(ctx, m, now) {
       const t = Math.min(1, (now - m.t0) / m.dur);
+      if (m.toFn) { // follow the target square if the layout moved (resize / rotation)
+        const [nx, ny] = m.toFn();
+        if (nx !== m.x1 || ny !== m.y1) { m.cx += nx - m.x1; m.cy += ny - m.y1; m.x1 = nx; m.y1 = ny; }
+      }
       const s = Math.pow(t, 1.25);
       const ix = (1 - s) * (1 - s) * m.x0 + 2 * (1 - s) * s * m.cx + s * s * m.x1;
       const iy = (1 - s) * (1 - s) * m.y0 + 2 * (1 - s) * s * m.cy + s * s * m.y1;
@@ -1483,7 +1499,10 @@
         requestAnimationFrame(frame);
       },
       makeLayer,
-      clearAll() { for (const L of layers) { L.parts = []; L.missiles = []; } },
+      clearAll() {
+        timers.forEach(clearTimeout); timers.clear();
+        for (const L of layers) { L.parts = []; L.missiles = []; }
+      },
       setEmitters(L, list) {
         const next = new Map();
         for (const e of list) {
@@ -1497,11 +1516,13 @@
         Sound.launch();
         if (reduced()) return Promise.resolve();
         if (muzzleAt) muzzle(muzzleAt.layer, muzzleAt.x, muzzleAt.y);
+        const toFn = typeof to === "function" ? to : null;
+        if (toFn) to = toFn();
         const dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
         const dur = Math.max(560, Math.min(900, 420 + dist * 0.55));
         const mx = (from[0] + to[0]) / 2, my = (from[1] + to[1]) / 2;
         globalLayer.missiles.push({ x0: from[0], y0: from[1], x1: to[0], y1: to[1], cx: mx, cy: my - (dist * 0.35 + 50),
-          t0: performance.now(), dur, u: unitPx, last: null });
+          t0: performance.now(), dur, u: unitPx, last: null, toFn });
         return wait(dur);
       },
       hit(L, r, c) {
@@ -1525,7 +1546,7 @@
         if (reduced()) return wait(900);
         explosion(L, c + .5, r + .5, 1.2);
         shake("l");
-        ship.cells.forEach(([sr, sc], i) => setTimeout(() => {
+        ship.cells.forEach(([sr, sc], i) => later(() => {
           explosion(L, sc + .5 + rand(-.15, .15), sr + .5 + rand(-.15, .15), .75);
           if (i === ship.cells.length - 1) shake("s");
         }, 180 + i * 150));
@@ -1537,7 +1558,7 @@
         if (reduced()) return;
         const cols = ["255,214,110", "120,220,255", "255,255,255", "255,170,90"];
         const n = Math.round(seconds * 2.2);
-        for (let i = 0; i < n; i++) setTimeout(() => {
+        for (let i = 0; i < n; i++) later(() => {
           const W = innerWidth, H = innerHeight;
           const side = Math.random() < 0.5 ? rand(0.04, 0.26) : rand(0.74, 0.96);
           const x = W * side, y = H * rand(0.12, 0.5), col = cols[Math.floor(Math.random() * cols.length)];
@@ -1553,7 +1574,7 @@
       embers(seconds) {
         if (reduced()) return;
         const n = Math.round(seconds * 14);
-        for (let i = 0; i < n; i++) setTimeout(() => {
+        for (let i = 0; i < n; i++) later(() => {
           const W = innerWidth, H = innerHeight;
           add(globalLayer, { k: "sp", seq: [SP.fire, SP.ember], add: true, x: rand(0, W), y: H + 10, vx: rand(-15, 15), vy: rand(-90, -40), wind: [10, 0],
             s0: rand(4, 9), s1: rand(2, 4), life: rand(3, 5), a: .9, fi: .1 });
@@ -1561,6 +1582,7 @@
             s0: 120, s1: 260, life: rand(4, 6), a: .35, fi: .3 });
         }, i * (1000 / 14));
       },
+      missileEnds() { return globalLayer.missiles.map(m => [m.x1, m.y1]); },
       stats() {
         return layers.map(L => ({ parts: L.parts.length, missiles: L.missiles.length, emitters: L.emitters.size,
           board: L.field ? L.field.closest(".board").id : "global" }));
@@ -1626,6 +1648,7 @@
         cell.className = "cell";
         cell.dataset.r = r; cell.dataset.c = c;
         cell.setAttribute("role", "button");
+        cell.tabIndex = -1;
         cell.setAttribute("aria-label", coordName(r, c));
         cellsEl.appendChild(cell);
         cells[r].push(cell);
@@ -1636,6 +1659,7 @@
       banner: el.querySelector(".banner"), layer: FX.makeLayer(el.querySelector(".fx"), field),
       reticle: el.querySelector(".reticle"), reticleTag: el.querySelector(".reticle .tag"),
       xh: el.querySelector(".xhair.h"), xv: el.querySelector(".xhair.v"),
+      focus: [0, 0],
       colLabels: [...el.querySelectorAll(".cols span")], rowLabels: [...el.querySelectorAll(".rows span")],
     };
   }
@@ -1654,6 +1678,11 @@
 
   function renderBoard(name, side, opts) {
     const B = boards[name];
+    const kb = !!opts.keyboard;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      const ti = kb && r === B.focus[0] && c === B.focus[1] ? 0 : -1;
+      if (B.cells[r][c].tabIndex !== ti) B.cells[r][c].tabIndex = ti;
+    }
     const emitters = [];
     for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
       const cls = ["cell"];
@@ -1833,9 +1862,9 @@
       preview = { keys: new Set(p.cells.map(([a, b]) => key(a, b))), ok: p.ok, r: p.r, c: p.c, dir: state.dir, name: FLEET[state.selected].name };
     }
     const aim = state.aim;
-    renderBoard("player", state.player, { showShips: true, last: state.lastShot.player, preview, sinking: state.sinking,
+    renderBoard("player", state.player, { keyboard: state.phase === "setup", showShips: true, last: state.lastShot.player, preview, sinking: state.sinking,
       aim: aim && aim.board === "player" ? aim : null });
-    renderBoard("enemy", state.enemy, { showShips: false, revealAll: state.phase === "over", last: state.lastShot.enemy, sinking: state.sinking,
+    renderBoard("enemy", state.enemy, { keyboard: state.phase === "battle", showShips: false, revealAll: state.phase === "over", last: state.lastShot.enemy, sinking: state.sinking,
       aim: aim && aim.board === "enemy" ? aim : null });
     boards.player.el.classList.toggle("placing", state.phase === "setup");
     updateReticles();
@@ -1948,7 +1977,7 @@
     const ready = state.player.ships.filter(s => !isSunk(s));
     const launcher = ready.length ? ready[Math.floor(Math.random() * ready.length)] : null;
     const mid = launcher ? launcher.cells[Math.floor(launcher.size / 2)] : [5, 5];
-    await FX.launch(cellCenter("player", mid[0], mid[1]), cellCenter("enemy", r, c), cellPx("enemy"),
+    await FX.launch(cellCenter("player", mid[0], mid[1]), () => cellCenter("enemy", r, c), cellPx("enemy"),
       { layer: boards.player.layer, x: mid[1] + .5, y: mid[0] + .5 });
     if (gid !== state.gameId) return;
     state.aim = null;
@@ -1978,7 +2007,7 @@
     render();
     // Launch from a random point in enemy waters (never from a real ship, so nothing is given away)
     const from = cellCenter("enemy", 2 + Math.random() * 6, 2 + Math.random() * 6);
-    await FX.launch(from, cellCenter("player", r, c), cellPx("player"));
+    await FX.launch(from, () => cellCenter("player", r, c), cellPx("player"));
     if (gid !== state.gameId) return;
     state.aim = null;
     const res = fireAt(state.player, r, c);
@@ -2043,6 +2072,7 @@
       gameId: state.gameId + 1,
     });
     FX.clearAll();
+    Sound.cancel();
     els.modal.classList.add("hidden");
     setLastAction("");
     render();
@@ -2094,7 +2124,7 @@
     demo.aim = { r: target[0], c: target[1] };
     renderDemo();
     const card = document.querySelector(".demo-card").getBoundingClientRect();
-    await FX.launch([card.left + card.width / 2, card.bottom - 10], cellCenter("demo", target[0], target[1]), cellPx("demo"));
+    await FX.launch([card.left + card.width / 2, card.bottom - 10], () => cellCenter("demo", target[0], target[1]), cellPx("demo"));
     if (!state.demoOpen) { demo.busy = false; return; }
     demo.aim = null;
     const res = fireAt(side, target[0], target[1]);
@@ -2149,6 +2179,30 @@
   });
   playerBoardEl.addEventListener("pointerleave", () => { if (state.hover) { state.hover = null; render(); } });
   enemyBoardEl.addEventListener("click", e => { const p = cellFromEvent(e); if (p) playerFire(...p); });
+
+  // Keyboard play: arrow keys move between squares, Enter or Space places / fires
+  function boardKeys(name, onActivate, onFocus) {
+    const B = boards[name];
+    B.el.addEventListener("keydown", e => {
+      const cell = e.target.closest(".cell"); if (!cell) return;
+      let [r, c] = [Number(cell.dataset.r), Number(cell.dataset.c)];
+      const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+      if (moves[e.key]) {
+        e.preventDefault();
+        r = Math.max(0, Math.min(SIZE - 1, r + moves[e.key][0])); c = Math.max(0, Math.min(SIZE - 1, c + moves[e.key][1]));
+        B.cells[B.focus[0]][B.focus[1]].tabIndex = -1;
+        B.focus = [r, c]; B.cells[r][c].tabIndex = 0; B.cells[r][c].focus();
+      } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(r, c); }
+    });
+    B.el.addEventListener("focusin", e => {
+      const cell = e.target.closest(".cell"); if (!cell) return;
+      B.focus = [Number(cell.dataset.r), Number(cell.dataset.c)];
+      onFocus(B.focus);
+    });
+    B.el.addEventListener("focusout", () => onFocus(null));
+  }
+  boardKeys("enemy", (r, c) => playerFire(r, c), p => { state.target = p; updateReticles(); });
+  boardKeys("player", (r, c) => onPlayerBoardClick(r, c), p => { if (state.phase === "setup") { state.hover = p; render(); } });
 
   els.shipList.addEventListener("click", e => {
     const b = e.target.closest(".ship-btn"); if (!b) return;

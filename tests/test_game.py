@@ -361,6 +361,57 @@ with sync_playwright() as p:
     pp.screenshot(path=OUT + 'victory_screen.png')
     check(pp.inner_text('#modal-kicker').lower() == 'mission accomplished', 'Victory kicker text')
 
+    # ---------- 10. QA regression tests (DEBUGGING_REPORT.md) ----------
+    IDLE = '(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)'
+    gl = lambda pg_, name: [l for l in pg_.evaluate('window.__battleship.fx.stats()') if l['board'] == name][0]
+    q = b.new_page(viewport={'width': 1024, 'height': 768})
+    q.on('pageerror', lambda e: errors.append(str(e)))
+    q.goto(URL); q.click('#random-btn'); q.click('#start-btn')
+    cells = q.evaluate('window.__battleship.state.enemy.ships[4].cells')
+    q.click(f'#enemy-board .cell[data-r="{cells[0][0]}"][data-c="{cells[0][1]}"]'); q.wait_for_function(IDLE, timeout=20000)
+    q.click(f'#enemy-board .cell[data-r="{cells[1][0]}"][data-c="{cells[1][1]}"]')
+    q.wait_for_function('document.querySelector("#enemy-board .ship-el.sinking")', timeout=5000)
+    q.click('#new-game-btn'); q.click('#confirm-yes'); q.click('#random-btn'); q.click('#start-btn')
+    q.wait_for_timeout(700)
+    check(gl(q, 'enemy-board')['parts'] == 0, f"BUG-1: no leftover explosions after abandoning mid-sink ({gl(q, 'enemy-board')['parts']})")
+    # BUG-2: fireworks stop after Play again
+    for s in q.evaluate('window.__battleship.state.enemy.ships.map(s=>s.cells)'):
+        for r, c in s:
+            q.wait_for_function(IDLE + ' || window.__battleship.state.phase === "over"', timeout=20000)
+            if q.evaluate('window.__battleship.state.phase') == 'over': break
+            q.click(f'#enemy-board .cell[data-r="{r}"][data-c="{c}"]')
+    q.wait_for_selector('#modal:not(.hidden)', timeout=20000); q.wait_for_timeout(1600)
+    q.click('#play-again-btn'); q.wait_for_timeout(300)
+    check(gl(q, 'global')['parts'] == 0, f"BUG-2: fireworks stop after Play again ({gl(q, 'global')['parts']})")
+    # BUG-3: missile follows its target through a resize
+    q.click('#random-btn'); q.click('#start-btn'); q.wait_for_timeout(600)
+    q.click('#enemy-board .cell[data-r="9"][data-c="9"]'); q.wait_for_timeout(120)
+    q.set_viewport_size({'width': 768, 'height': 1024}); q.wait_for_timeout(250)
+    end = q.evaluate('(()=>{const m=window.__battleship.fx.missileEnds(); return m.length ? m[0] : null})()')
+    want = q.evaluate('(()=>{const r=document.querySelector(\'#enemy-board .cell[data-r="9"][data-c="9"]\').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()')
+    check(end is not None and abs(end[0]-want[0]) < 2 and abs(end[1]-want[1]) < 2, f'BUG-3: missile retargets after resize (end {end}, square {want})')
+    q.close()
+    # BUG-5: keyboard play
+    k = b.new_page(viewport={'width': 1024, 'height': 768})
+    k.on('pageerror', lambda e: errors.append(str(e)))
+    k.goto(URL)
+    check(k.evaluate('[...document.querySelectorAll("#player-board .cell")].filter(c=>c.tabIndex===0).length') == 1, 'BUG-5: one keyboard stop on your board during setup')
+    k.focus('#player-board .cell[data-r="0"][data-c="0"]')
+    k.keyboard.press('Enter')
+    check(k.evaluate('window.__battleship.state.player.ships.length') == 1, 'BUG-5: Enter places a ship')
+    for key in ['ArrowDown', 'ArrowDown', 'Enter', 'ArrowDown', 'ArrowDown', 'Enter', 'ArrowDown', 'ArrowDown', 'Enter', 'ArrowDown', 'ArrowDown', 'Enter']:
+        k.keyboard.press(key)
+    check(k.evaluate('window.__battleship.state.player.ships.length') == 5, 'BUG-5: whole fleet placed with keyboard only')
+    k.click('#start-btn')
+    k.focus('#enemy-board .cell[data-r="0"][data-c="0"]')
+    k.keyboard.press('ArrowRight'); k.keyboard.press('ArrowDown')
+    check(k.evaluate('document.activeElement.dataset.r + document.activeElement.dataset.c') == '11', 'BUG-5: arrow keys move between squares')
+    check(k.inner_text('#enemy-board .reticle .tag') == 'B2', 'BUG-5: reticle follows keyboard focus')
+    k.keyboard.press(' ')
+    k.wait_for_function('window.__battleship.state.stats.playerShots === 1', timeout=5000)
+    check(k.evaluate('window.__battleship.state.enemy.shots[1][1]') is not None, 'BUG-5: Space fires at the focused square')
+    k.close()
+
     check(not errors, f'No JavaScript errors {errors}')
     b.close()
 print('\nFAILURES:', fails if fails else 'none')

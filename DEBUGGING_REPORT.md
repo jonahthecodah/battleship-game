@@ -4,7 +4,7 @@
 **Date:** 2026-11-13. **Tester:** Devin, acting as QA engineer.
 **Environment:** Ubuntu VM, headless Chrome for Testing 156 driven by Playwright (Python), viewports from 360×740 (phone) to 1440×900 (desktop), with touch emulation for phones and tablets. I didn't test on real iOS or Android devices.
 
-Every result below comes from tests that were actually run. The *Status* column records the resolution. Before fixing anything I documented every bug as **Open**, then updated the report after the fixes (see §5).
+Every result below comes from tests that were actually run. The *Status* column records the resolution. Before fixing anything I documented every bug as **Open** (commit `1ab5bf4`). After fixing them I updated the status column and §5.
 
 ---
 
@@ -18,11 +18,11 @@ Every result below comes from tests that were actually run. The *Status* column 
 
 | ID | Title | Severity | Status |
 |----|-------|----------|--------|
-| BUG-1 | Effects from a finished or abandoned game keep playing on the next game | Medium | Open |
-| BUG-2 | Victory fireworks / defeat embers keep spawning after "Play again" | Low | Open |
-| BUG-3 | Missile in flight lands at the old screen position if the window is resized or the tablet is rotated mid-flight | Low | Open |
-| BUG-4 | Upright tablet (768×1024): setup screen didn't fit, and ship names in the setup tiles were cut off | Low | Open (fix verified in §5) |
-| BUG-5 | Game can't be played with a keyboard (board squares aren't focusable) | Medium (accessibility) | Open |
+| BUG-1 | Effects from a finished or abandoned game keep playing on the next game | Medium | **Fixed & verified** |
+| BUG-2 | Victory fireworks / defeat embers keep spawning after "Play again" | Low | **Fixed & verified** |
+| BUG-3 | Missile in flight lands at the old screen position if the window is resized or the tablet is rotated mid-flight | Low | **Fixed & verified** |
+| BUG-4 | Upright tablet (768×1024): setup screen didn't fit, and ship names in the setup tiles were cut off | Low | **Fixed & verified** |
+| BUG-5 | Game can't be played with a keyboard (board squares aren't focusable) | Medium (accessibility) | **Fixed & verified** |
 
 ### BUG-1: Effects from an abandoned game spill into the next game. Medium
 - **Reproduce:**
@@ -120,4 +120,19 @@ Automated suite run on the build that includes the three difficulty levels: **14
 
 ## 5. Resolution and verification
 
-*(Filled in after the fixes. See below.)*
+| ID | Fix | Verification (actually run) |
+|----|-----|-----------------------------|
+| BUG-1 | The effects and sound engines now keep track of every scheduled follow-up (`later()` instead of a bare `setTimeout`). `FX.clearAll()` cancels them, and the new `Sound.cancel()` stops scheduled and playing sounds. Both run on New game / Play again. | Repro script: 0 particles on the new board right after abandoning mid-sink (was 140). New automated check *"BUG-1: no leftover explosions after abandoning mid-sink"*: PASS. |
+| BUG-2 | Same fix: firework and ember bursts are tracked and cancelled. | Repro script: 0 particles 1.5 s after Play again (was 124). Automated check *"BUG-2: fireworks stop after Play again"*: PASS. |
+| BUG-3 | A missile's target is now a function that's re-measured every frame, so the flight path follows the square when the layout moves. | Fired at J10, resized 1024×768 → 768×1024 mid-flight: the missile's end point matched the square's new centre to within 0.01 px. Automated check *"BUG-3: missile retargets after resize"*: PASS. |
+| BUG-4 | The upright-tablet board size now accounts for the taller setup panel. The compact ship tiles use smaller names and silhouettes, and clip their contents. | Automated check *"768x1024: setup fits on screen"*: PASS (was FAIL, bottom 1034). Screenshot reviewed: names no longer overlap. |
+| BUG-5 | Keyboard support on the board: one Tab stop per board, arrow keys move between squares, Enter or Space places a ship during setup or fires during battle, the targeting crosshair follows keyboard focus, and a visible focus outline was added. | New automated checks: Enter places a ship; the whole fleet can be placed by keyboard alone; arrow keys move focus; the crosshair follows focus; Space fires at the focused square. All PASS. |
+
+**Final full run after the fixes: 154 / 154 checks passed, 0 failed** (the 145 earlier checks plus 9 new regression checks). No JavaScript errors. Computer opponent over 300 simulated games per level: Beginner 83.9, Intermediate 62.7, Advanced 44.5 average shots to win, with no repeated shots and no invalid fleets. 60 fps during sinking at desktop and both tablet orientations.
+
+## 6. Remaining limitations and improvements (not bugs)
+
+- **Not tested on physical devices:** I didn't test on a real iPad, iPhone or Android device. The risks in §3 still apply until it's checked on one.
+- **Screen readers:** squares have labels such as "B7, hit", but changes during play (hits, sinks, turn changes) aren't announced automatically yet. Adding that would be an improvement.
+- **Animation demo:** the temporary demo panel is still included, waiting on your decision to keep or remove it.
+- **Beginner difficulty:** it's deliberately weak (about 84 shots to win, against roughly 96 for purely random firing). It can be tuned if it feels too easy.
