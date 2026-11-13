@@ -382,6 +382,7 @@
   }
   .seg button:hover { color: #e3f1fc; background: rgba(63, 208, 255, .08); }
   .seg button.on { background: linear-gradient(180deg, #2ab8e8, #0f8fc1); color: #03141f; box-shadow: 0 0 12px rgba(63, 208, 255, .3); }
+  #skill-seg button { letter-spacing: .03em; font-size: .74rem; padding: 8px 4px; }
   .field-label { font: 700 .66rem/1 var(--mono); text-transform: uppercase; letter-spacing: .2em; color: var(--muted); margin-bottom: 6px; }
   #start-btn { font-size: 1rem; min-height: 54px; letter-spacing: .2em; }
   .panel .row .btn { padding: 10px 8px; font-size: .78rem; letter-spacing: .08em; }
@@ -583,14 +584,16 @@
       --board-size: min(calc((100vw - 130px) / 2), calc(100dvh - 270px), 540px); }
   }
   @media (max-width: 860px) {
-    body.setup { --board-size: min(92vw, max(300px, calc(100dvh - 590px)), 520px); }
+    body.setup { --board-size: min(92vw, max(300px, calc(100dvh - 640px)), 520px); }
     .panel { width: min(92vw, 560px); }
     .ship-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
     .ship-btn { flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px 10px; }
-    .ship-btn .name { font-size: .9rem; }
+    .ship-btn .name { font-size: .72rem; letter-spacing: .04em; }
+    .ship-btn .mini { height: 14px; }
+    .ship-btn { min-width: 0; overflow: hidden; }
     .ship-btn .size, .ship-btn .done-word { display: none; }
     .seg button { font-size: .9rem; }
-    .panel .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .panel .controls { display: grid; grid-template-columns: 1fr; gap: 10px; }
   }
   @media (max-width: 760px) {
     .status { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -711,10 +714,11 @@
           </div>
         </div>
         <div>
-          <div class="field-label">Computer skill</div>
+          <div class="field-label">Difficulty</div>
           <div class="seg" id="skill-seg">
-            <button data-skill="easy">Easy</button>
-            <button data-skill="smart" class="on">Smart</button>
+            <button data-skill="beginner">Beginner</button>
+            <button data-skill="intermediate" class="on">Intermediate</button>
+            <button data-skill="advanced">Advanced</button>
           </div>
         </div>
       </div>
@@ -878,8 +882,12 @@
 
     const pick = list => list[Math.floor(Math.random() * list.length)];
 
-    if (skill === "easy") {
-      if (openHits.length) {
+    // Beginner: fires at random and only sometimes follows up on a hit.
+    // Intermediate: fires at random but always attacks the squares around a hit.
+    // Advanced: probability targeting (below).
+    if (skill === "beginner" || skill === "intermediate") {
+      const followUp = skill === "intermediate" || Math.random() < 0.15;
+      if (openHits.length && followUp) {
         const near = [];
         for (const [r, c] of openHits)
           for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
@@ -891,7 +899,7 @@
       return pick(untried);
     }
 
-    // "Smart": count every way the remaining ships could still fit, and aim
+    // Advanced: count every way the remaining ships could still fit, and aim
     // where a ship is most likely to be. Squares next to unfinished hits count far more.
     const remaining = side.ships.filter(s => !isSunk(s)).map(s => s.size);
     const openSet = new Set(openHits.map(([r, c]) => key(r, c)));
@@ -1569,7 +1577,7 @@
     enemy: newSide(),
     selected: 0,
     dir: "h",
-    skill: "smart",
+    skill: "intermediate",
     busy: false,
     aim: null,               // { board, r, c } while a missile is in the air
     sinking: null,           // ship currently playing its sinking animation

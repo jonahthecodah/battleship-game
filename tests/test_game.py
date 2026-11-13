@@ -20,7 +20,7 @@ with sync_playwright() as p:
     pg.goto(URL)
     res = pg.evaluate('''() => {
       const B = window.__battleship; const out = {};
-      for (const skill of ['easy','smart']) {
+      for (const skill of ['beginner','intermediate','advanced']) {
         let total = 0, maxS = 0, bad = 0, n = 300;
         for (let g = 0; g < n; g++) {
           const side = B.newSide(); B.placeFleetRandomly(side);
@@ -45,9 +45,9 @@ with sync_playwright() as p:
       return out;
     }''')
     print(res)
-    for k in ('easy', 'smart'):
+    for k in ('beginner', 'intermediate', 'advanced'):
         check(res[k]['bad'] == 0, f'{k} AI: valid fleets, never repeats a shot, always finishes ({res[k]})')
-    check(res['smart']['avg'] < res['easy']['avg'], 'Smart AI is stronger than Easy')
+    check(res['advanced']['avg'] < res['intermediate']['avg'] < res['beginner']['avg'], 'Each difficulty level is stronger than the one below it')
     check(res['repeat'], 'Firing the same square twice is rejected')
 
     # ---------- 2. Placement UI ----------
@@ -91,6 +91,11 @@ with sync_playwright() as p:
     n = S('window.__battleship.state.player.ships.length')
     check(n == 5, f'All five ships placed ({n})')
     check(not pg.locator('#start-btn').is_disabled(), 'Start enabled when fleet complete')
+    check([x.strip().lower() for x in pg.locator('#skill-seg button').all_inner_texts()] == ['beginner', 'intermediate', 'advanced'], 'Three difficulty levels offered')
+    check(S('window.__battleship.state.skill') == 'intermediate', 'Intermediate is the default difficulty')
+    for lvl in ['beginner', 'advanced', 'intermediate']:
+        pg.click(f'#skill-seg button[data-skill="{lvl}"]')
+        check(S('window.__battleship.state.skill') == lvl and 'on' in pg.get_attribute(f'#skill-seg button[data-skill="{lvl}"]', 'class'), f'Can choose {lvl}')
     pg.click('#clear-btn')
     check(S('window.__battleship.state.player.ships.length') == 0 and pg.locator('#start-btn').is_disabled(), 'Clear board works')
     pg.click('#random-btn')
