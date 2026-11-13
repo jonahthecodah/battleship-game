@@ -24,6 +24,7 @@
     --radius: 14px;
     --board-size: min(92vw, 520px);
     --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --display: "Bahnschrift", "DIN Alternate", "DIN Condensed", "Barlow Semi Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
@@ -49,36 +50,84 @@
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 10px 20px; max-width: 1200px; margin: 0 auto;
   }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand svg { width: 34px; height: 34px; }
-  h1 { font-size: 1.45rem; margin: 0; letter-spacing: 0.02em; }
-  .header-actions { display: flex; gap: 8px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 38px; height: 38px; filter: drop-shadow(0 0 8px rgba(63, 208, 255, .35)); }
+  .brand-text { display: flex; flex-direction: column; line-height: 1; }
+  h1 {
+    margin: 0; font: 700 1.5rem/1 var(--display); letter-spacing: .32em; text-transform: uppercase;
+    background: linear-gradient(180deg, #f4f9ff 20%, #9fb6cc 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .brand-sub { margin-top: 5px; font: 700 .62rem/1 var(--mono); letter-spacing: .34em; color: var(--cyan); opacity: .8; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
 
+  /* Buttons: angular, tactical */
   .btn {
-    border: 1px solid var(--border); background: var(--surface-2);
-    padding: 10px 16px; border-radius: 10px; cursor: pointer;
-    font-weight: 600; font-size: 0.95rem; min-height: 44px;
-    transition: background .15s, transform .05s, opacity .15s;
+    --cut: 9px;
+    position: relative; border: 0; cursor: pointer; min-height: 44px; padding: 10px 18px; white-space: nowrap;
+    font: 700 .86rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: #dcecf9;
+    background: linear-gradient(180deg, #1d3550, #12233a);
+    box-shadow: inset 0 0 0 1px rgba(120, 200, 255, .28), inset 0 1px 0 rgba(255, 255, 255, .08);
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+    transition: background .2s, box-shadow .2s, color .2s, transform .06s, opacity .2s;
   }
-  .btn:hover { background: #22406a; }
-  .btn:active { transform: translateY(1px); }
-  .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .btn.primary { background: var(--accent-strong); border-color: transparent; color: #04131f; }
-  .btn.primary:hover:not(:disabled) { background: var(--accent); }
-  .btn.ghost { background: transparent; }
-  .btn.demo-open { border-color: rgba(255, 179, 71, .5); color: #ffd59a; }
+  .btn:hover:not(:disabled) { background: linear-gradient(180deg, #24466a, #16304d); box-shadow: inset 0 0 0 1px rgba(63, 208, 255, .75), inset 0 0 18px rgba(63, 208, 255, .18); color: #fff; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.primary { color: #03141f; background: linear-gradient(180deg, #5fdcff, #13a6dc); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 0 0 0 rgba(63, 208, 255, 0); }
+  .btn.primary:hover:not(:disabled) { color: #03141f; background: linear-gradient(180deg, #8ae7ff, #2bb9ec); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 1px rgba(255,255,255,.5); }
+  .btn.primary:not(:disabled) { animation: ready-glow 2.4s ease-in-out infinite; }
+  @keyframes ready-glow { 50% { filter: drop-shadow(0 0 10px rgba(63, 208, 255, .55)); } }
+  .btn.ghost { background: rgba(14, 28, 45, .6); }
+  .btn.demo-open { color: #ffd59a; box-shadow: inset 0 0 0 1px rgba(255, 179, 71, .55); }
+  .btn.demo-open:hover:not(:disabled) { color: #ffe3b8; box-shadow: inset 0 0 0 1px rgba(255, 179, 71, .9), inset 0 0 18px rgba(255, 179, 71, .15); }
+  .icon-btn { --cut: 7px; width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .icon-btn .off { display: none; }
+  .icon-btn[aria-pressed="true"] .on { display: none; }
+  .icon-btn[aria-pressed="true"] .off { display: block; }
+  .icon-btn[aria-pressed="true"] { color: #ff9b85; }
 
-  .status { max-width: 1200px; margin: 0 auto 12px; padding: 0 20px; }
-  .status-inner {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 10px 16px; font-size: 1.1rem; font-weight: 600; text-align: center; min-height: 48px;
+  /* ---------- Command bar: fleet strength + turn indicator ---------- */
+  .status {
+    max-width: 1200px; margin: 0 auto 12px; padding: 0 20px;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr); gap: 10px; align-items: stretch;
   }
-  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none; }
-  .status[data-turn="player"] .dot { background: var(--good); box-shadow: 0 0 0 4px rgba(34,197,94,.2); }
-  .status[data-turn="computer"] .dot { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.2); animation: pulse 1s infinite; }
-  .status[data-turn="over"] .dot { background: var(--accent); }
-  .last-action { text-align: center; color: var(--muted); font-size: .95rem; min-height: 1.4em; margin-top: 6px; }
+  .force, .turn-box {
+    position: relative; background: linear-gradient(180deg, rgba(20, 36, 54, .92), rgba(9, 18, 30, .94));
+    border: 1px solid rgba(120, 190, 240, .16); border-radius: 12px; padding: 8px 12px; min-height: 58px;
+  }
+  .force { display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+  .force-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+  .force-label { font: 700 .66rem/1 var(--mono); letter-spacing: .16em; color: var(--muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .force-count { font: 700 1.05rem/1 var(--display); letter-spacing: .06em; color: #e9f4ff; white-space: nowrap; }
+  .force-count small { color: var(--muted); font-size: .7rem; letter-spacing: .1em; }
+  .hull { display: grid; grid-template-columns: repeat(17, 1fr); gap: 2px; height: 7px; }
+  .hull i { border-radius: 1px; background: rgba(63, 208, 255, .75); box-shadow: 0 0 6px rgba(63, 208, 255, .35); transition: background .4s, box-shadow .4s; }
+  .force.enemy .hull i { background: rgba(255, 179, 71, .7); box-shadow: 0 0 6px rgba(255, 179, 71, .25); }
+  .hull i.dead { background: rgba(255, 70, 50, .85); box-shadow: 0 0 6px rgba(255, 60, 40, .5); }
+  .force.enemy .hull i.dead { background: rgba(70, 85, 100, .55); box-shadow: none; }
+  .force.setup-hide { visibility: hidden; }
+  .turn-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-align: center; }
+  .turn-box::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
+    background: radial-gradient(60% 120% at 50% 0%, var(--turn-glow, transparent), transparent 70%);
+  }
+  .status[data-turn="player"] .turn-box { --turn-glow: rgba(63, 208, 255, .22); border-color: rgba(63, 208, 255, .45); }
+  .status[data-turn="computer"] .turn-box { --turn-glow: rgba(255, 179, 71, .2); border-color: rgba(255, 179, 71, .45); }
+  .status[data-turn="over"] .turn-box { --turn-glow: rgba(250, 204, 21, .2); border-color: rgba(250, 204, 21, .45); }
+  .status[data-turn] .turn-box::before { opacity: 1; }
+  .status-inner { display: flex; align-items: center; justify-content: center; gap: 10px; font: 700 1.04rem/1.15 var(--display); letter-spacing: .05em; }
+  .turn-tag {
+    font: 800 .62rem/1 var(--mono); letter-spacing: .2em; padding: 4px 7px; border-radius: 4px; flex: none;
+    color: #9fb3c8; background: rgba(140, 170, 200, .12); box-shadow: inset 0 0 0 1px rgba(140, 170, 200, .25);
+  }
+  .status[data-turn="player"] .turn-tag { color: #03141f; background: var(--cyan); box-shadow: 0 0 12px rgba(63, 208, 255, .55); }
+  .status[data-turn="computer"] .turn-tag { color: #1a1205; background: var(--amber); animation: pulse 1s infinite; }
+  .status[data-turn="over"] .turn-tag { color: #1a1205; background: #facc15; }
+  .turn-box.flash { animation: turn-flash .7s ease-out; }
+  @keyframes turn-flash { 0% { box-shadow: 0 0 0 0 rgba(63, 208, 255, .7), inset 0 0 30px rgba(63,208,255,.4); } 100% { box-shadow: 0 0 0 14px rgba(63, 208, 255, 0), inset 0 0 0 rgba(63,208,255,0); } }
+  .last-action { color: var(--muted); font-size: .86rem; min-height: 1.2em; }
   .last-action:empty { display: none; }
   .last-action b.hit { color: #ffb199; } .last-action b.miss { color: #cfe6f5; } .last-action b.sunk { color: #ff7a6b; }
 
@@ -88,7 +137,9 @@
   }
 
   .panel {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px;
+    position: relative; border-radius: var(--radius); padding: 14px;
+    background: linear-gradient(180deg, rgba(24, 42, 62, .95), rgba(10, 20, 33, .95));
+    border: 1px solid rgba(120, 190, 240, .16); box-shadow: 0 18px 50px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255,255,255,.05);
   }
 
   /* ---------- Battle station cards ---------- */
@@ -108,7 +159,7 @@
   #enemy-card { --bsize: var(--enemy-size, var(--board-size)); }
   #player-card { --bsize: var(--player-size, var(--board-size)); }
   .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-  .board-card h2 { margin: 0; font-size: .82rem; letter-spacing: .2em; text-transform: uppercase; color: #cfe9ff; }
+  .board-card h2 { margin: 0; font: 700 .9rem/1 var(--display); letter-spacing: .24em; text-transform: uppercase; color: #cfe9ff; }
   .board-card .sub { margin: 0; color: var(--muted); font-size: .82rem; text-align: right; }
   .panel h2 { margin: 0; font-size: 1.05rem; }
 
@@ -284,48 +335,60 @@
     40% { transform: translate(-5px, -2px); } 55% { transform: translate(4px, 3px); } 70% { transform: translate(-3px, 1px); } 85% { transform: translate(2px, -1px); }
   }
 
-  /* ---------- Fleet status ---------- */
+  /* ---------- Fleet tags ---------- */
   .fleet { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-width: var(--bsize); }
   .fleet:empty { display: none; }
   .chip {
-    display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px;
-    background: var(--surface-2); border: 1px solid var(--border); font-size: .74rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 6px; border-radius: 5px;
+    background: rgba(22, 40, 61, .8); box-shadow: inset 0 0 0 1px rgba(120, 190, 240, .18);
+    font: 700 .68rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #cfe2f2;
+    transition: opacity .4s, background .4s;
   }
   .chip .pips { display: inline-flex; gap: 2px; }
-  .chip .pips i { width: 6px; height: 6px; border-radius: 2px; background: #9aa9bb; display: block; }
-  .chip .pips i.h { background: var(--hit); }
-  .chip.sunk { opacity: .55; text-decoration: line-through; }
+  .chip .pips i { width: 6px; height: 6px; border-radius: 1px; background: #8fa6bb; display: block; }
+  .chip .pips i.h { background: var(--hit); box-shadow: 0 0 4px rgba(255, 90, 54, .7); }
+  .chip.sunk { opacity: .6; text-decoration: line-through; background: rgba(80, 14, 14, .55); box-shadow: inset 0 0 0 1px rgba(255, 90, 70, .35); }
   .chip.sunk .pips i { background: var(--sunk); }
 
   /* ---------- Setup panel ---------- */
-  .panel { width: min(92vw, 350px); display: flex; flex-direction: column; gap: 12px; }
-  .panel p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; line-height: 1.4; }
+  .panel { width: min(92vw, 350px); display: flex; flex-direction: column; gap: 12px; animation: card-in .5s cubic-bezier(.2, .8, .2, 1) both; }
+  .panel h2 { margin: 0; font: 700 1.05rem/1 var(--display); letter-spacing: .2em; text-transform: uppercase; }
+  .panel p { margin: 6px 0 0; color: var(--muted); font-size: .88rem; line-height: 1.4; }
   .ship-list { display: flex; flex-direction: column; gap: 6px; }
   .ship-btn {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    width: 100%; padding: 8px 12px; min-height: 44px; border-radius: 10px; cursor: pointer;
-    background: var(--surface-2); border: 2px solid transparent; text-align: left;
+    width: 100%; padding: 6px 10px 6px 12px; min-height: 46px; border-radius: 8px; cursor: pointer; text-align: left; border: 0;
+    background: linear-gradient(90deg, rgba(29, 53, 80, .9), rgba(18, 35, 58, .9)); box-shadow: inset 0 0 0 1px rgba(120, 190, 240, .14);
+    transition: box-shadow .2s, background .2s, opacity .2s, transform .1s;
   }
-  .ship-btn .name { font-weight: 600; }
-  .ship-btn .size { color: var(--muted); font-size: .85rem; margin-left: 6px; font-weight: 500; }
-  .ship-btn .pips { display: inline-flex; gap: 3px; }
-  .ship-btn .pips i { width: 14px; height: 14px; border-radius: 3px; background: #9aa9bb; display: block; }
-  .ship-btn.selected { border-color: var(--accent); background: #1d3b5f; }
-  .ship-btn.placed { opacity: .6; }
-  .ship-btn .done { display: none; color: var(--good); font-size: .85rem; font-weight: 600; margin-left: 6px; }
+  .ship-btn:hover { box-shadow: inset 0 0 0 1px rgba(63, 208, 255, .55); }
+  .ship-btn:active { transform: translateY(1px); }
+  .ship-btn .name { font: 700 .9rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; }
+  .ship-btn .size { color: var(--muted); font: 600 .72rem/1 var(--mono); margin-left: 8px; }
+  .ship-btn .mini { height: 20px; flex: none; display: block; }
+  .ship-btn .mini svg { height: 100%; width: auto; display: block; overflow: visible; }
+  .ship-btn.selected { background: linear-gradient(90deg, rgba(14, 90, 130, .55), rgba(18, 45, 72, .9)); box-shadow: inset 0 0 0 1.5px var(--cyan), 0 0 16px rgba(63, 208, 255, .2); }
+  .ship-btn.placed { opacity: .55; }
+  .ship-btn .done { display: none; color: var(--good); font: 700 .72rem/1 var(--mono); letter-spacing: .08em; margin-left: 8px; text-transform: uppercase; }
   .ship-btn.placed .done { display: inline; }
   .ship-btn.placed .size { display: none; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .row .btn { flex: 1 1 auto; }
   .controls { display: flex; flex-direction: column; gap: 12px; }
-  .seg { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; border: 1px solid var(--border); }
-  .seg button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--muted); min-height: 40px; }
-  .seg button.on { background: var(--accent-strong); color: #04131f; }
-  .field-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-bottom: 5px; }
-  #start-btn { font-size: 1.05rem; min-height: 52px; }
+  .seg { display: flex; gap: 3px; background: rgba(8, 18, 30, .8); border-radius: 8px; padding: 3px; box-shadow: inset 0 0 0 1px rgba(120, 190, 240, .16); }
+  .seg button {
+    flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 6px; cursor: pointer; min-height: 40px;
+    font: 700 .8rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); transition: background .2s, color .2s;
+  }
+  .seg button:hover { color: #e3f1fc; background: rgba(63, 208, 255, .08); }
+  .seg button.on { background: linear-gradient(180deg, #2ab8e8, #0f8fc1); color: #03141f; box-shadow: 0 0 12px rgba(63, 208, 255, .3); }
+  .field-label { font: 700 .66rem/1 var(--mono); text-transform: uppercase; letter-spacing: .2em; color: var(--muted); margin-bottom: 6px; }
+  #start-btn { font-size: 1rem; min-height: 54px; letter-spacing: .2em; }
+  .panel .row .btn { padding: 10px 8px; font-size: .78rem; letter-spacing: .08em; }
+  .panel .ship-btn { min-height: 42px; padding-top: 4px; padding-bottom: 4px; }
 
   /* ---------- Legend ---------- */
-  .legend { width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: .88rem; }
+  .legend { width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; color: var(--muted); font: 600 .72rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
   .legend span { display: inline-flex; align-items: center; gap: 8px; }
   .sw { position: relative; width: 24px; height: 24px; border-radius: 4px; display: inline-block; background: radial-gradient(circle at 30% 20%, #1d5f86, #0a2a48); box-shadow: inset 0 0 0 1px rgba(63,208,255,.35); }
   .sw::after { content: ""; position: absolute; }
@@ -333,27 +396,92 @@
   .sw.hit::after { inset: 4%; border-radius: 50%; background: radial-gradient(circle, rgba(255,214,140,.95) 0 7%, rgba(255,110,45,.8) 15%, rgba(200,45,20,.45) 27%, rgba(25,10,5,.55) 40%, transparent 60%); }
   .sw.sunk { background: radial-gradient(circle at 30% 20%, #3a2a36, #1a0f18); box-shadow: inset 0 0 0 1.5px rgba(255,90,70,.75); }
 
-  /* ---------- Modals ---------- */
+  /* ---------- Overlays ---------- */
   .modal {
     position: fixed; inset: 0; background: rgba(3, 9, 18, .82);
     display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10;
+    animation: fade-in-o .25s ease both;
   }
   .modal.hidden { display: none; }
-  .modal-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
-    padding: 28px; width: min(92vw, 420px); text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5);
-    animation: pop .3s ease-out;
+  @keyframes fade-in-o { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes pulse { 50% { opacity: .45; } }
+  @keyframes card-in { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+
+  .dialog-card {
+    width: min(92vw, 400px); text-align: center; padding: 24px; border-radius: 16px;
+    background: linear-gradient(180deg, rgba(24, 42, 62, .98), rgba(10, 20, 33, .98));
+    border: 1px solid rgba(120, 190, 240, .2); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: pop .25s ease-out;
   }
-  .modal-card .big { line-height: 0; }
-  .modal-card .big svg { width: 64px; height: 64px; }
-  .modal-card h2 { margin: 10px 0 6px; font-size: 1.8rem; }
-  .modal-card p { color: var(--muted); margin: 0 0 18px; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
-  .stats div { background: var(--surface-2); border-radius: 10px; padding: 10px 6px; }
-  .stats b { display: block; font-size: 1.3rem; }
-  .stats small { color: var(--muted); }
-  @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @keyframes pulse { 50% { opacity: .4; } }
+  .dialog-card h2 { margin: 0 0 8px; font: 700 1.3rem/1.1 var(--display); letter-spacing: .14em; text-transform: uppercase; }
+  .dialog-card p { margin: 0 0 18px; color: var(--muted); }
+
+  /* Cinematic victory / defeat screen */
+  .end-screen { background: rgba(2, 6, 12, .86); overflow: hidden; }
+  .end-rays { position: absolute; left: 50%; top: 42%; width: 180vmax; height: 180vmax; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; }
+  .end-screen.win .end-rays {
+    opacity: .5;
+    background: repeating-conic-gradient(from 0deg, rgba(250, 204, 21, .16) 0deg 6deg, transparent 6deg 18deg);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 55%); mask-image: radial-gradient(circle, #000 0%, transparent 55%);
+    animation: rays 40s linear infinite;
+  }
+  .end-screen.lose .end-rays {
+    opacity: 1; background: radial-gradient(circle, rgba(160, 20, 20, .28), transparent 50%);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .end-screen.lose::after { /* scanlines */
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .25;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .5) 0 2px, transparent 2px 4px);
+  }
+  @keyframes rays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+  @keyframes breathe { 50% { opacity: .6; } }
+  .end-card { position: relative; z-index: 1; width: min(94vw, 520px); text-align: center; padding: 10px 6px; }
+  .end-kicker { font: 800 .74rem/1 var(--mono); letter-spacing: .5em; text-transform: uppercase; opacity: 0; animation: rise .6s ease .15s forwards; }
+  .end-screen.win .end-kicker { color: #fde68a; }
+  .end-screen.lose .end-kicker { color: #fca5a5; }
+  .end-card .big { line-height: 0; margin: 16px 0 4px; opacity: 0; animation: medal .8s cubic-bezier(.2, 1.4, .4, 1) .3s forwards; }
+  .end-card .big svg { width: 76px; height: 76px; filter: drop-shadow(0 0 18px rgba(250, 204, 21, .45)); }
+  .end-screen.lose .end-card .big svg { filter: drop-shadow(0 0 16px rgba(255, 70, 50, .45)); }
+  .end-card h2 {
+    margin: 4px 0 8px; font: 800 clamp(2.8rem, 9vw, 4.6rem)/1 var(--display); text-transform: uppercase;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    opacity: 0; animation: title-in 1s cubic-bezier(.2, .8, .2, 1) .35s forwards;
+  }
+  .end-screen.win .end-card h2 { background-image: linear-gradient(180deg, #fff7d1 10%, #facc15 50%, #b7791f 90%); filter: drop-shadow(0 4px 20px rgba(250, 204, 21, .35)); }
+  .end-screen.lose .end-card h2 { background-image: linear-gradient(180deg, #ffe4e1 10%, #f87171 55%, #7f1d1d 95%); filter: drop-shadow(0 4px 20px rgba(220, 38, 38, .35)); }
+  .end-card p { color: #c3d3e2; margin: 0 0 20px; opacity: 0; animation: rise .6s ease .7s forwards; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 22px; }
+  .stats div {
+    background: linear-gradient(180deg, rgba(24, 42, 62, .9), rgba(10, 20, 33, .9)); border-radius: 10px; padding: 10px 6px;
+    box-shadow: inset 0 0 0 1px rgba(120, 190, 240, .16); opacity: 0; animation: rise .5s ease forwards;
+  }
+  .stats div:nth-child(1) { animation-delay: .85s; } .stats div:nth-child(2) { animation-delay: .95s; } .stats div:nth-child(3) { animation-delay: 1.05s; }
+  .stats div:nth-child(4) { animation-delay: 1.15s; } .stats div:nth-child(5) { animation-delay: 1.25s; } .stats div:nth-child(6) { animation-delay: 1.35s; }
+  .stats b { display: block; font: 700 1.45rem/1.1 var(--display); letter-spacing: .04em; }
+  .stats small { color: var(--muted); font: 600 .62rem/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+  .end-card .row { opacity: 0; animation: rise .5s ease 1.4s forwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes medal { from { opacity: 0; transform: scale(.3) rotate(-25deg); } to { opacity: 1; transform: none; } }
+  @keyframes title-in { from { opacity: 0; letter-spacing: .6em; filter: blur(8px); } to { opacity: 1; letter-spacing: .12em; } }
+
+  /* Full-screen "battle stations" sweep */
+  .stage-banner {
+    position: fixed; left: 0; right: 0; top: 50%; z-index: 35; pointer-events: none; transform: translateY(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 0; opacity: 0;
+    background: linear-gradient(90deg, transparent, rgba(6, 20, 36, .92) 18%, rgba(6, 20, 36, .92) 82%, transparent);
+    border-top: 1px solid rgba(63, 208, 255, .5); border-bottom: 1px solid rgba(63, 208, 255, .5);
+  }
+  .stage-banner b { font: 800 clamp(1.8rem, 6vw, 3rem)/1 var(--display); letter-spacing: .3em; text-transform: uppercase; color: #eaf6ff; text-shadow: 0 0 24px rgba(63, 208, 255, .6); }
+  .stage-banner span { font: 700 .74rem/1 var(--mono); letter-spacing: .4em; color: var(--cyan); text-transform: uppercase; }
+  .stage-banner.show { animation: stage 1.9s cubic-bezier(.2, .8, .2, 1) forwards; }
+  @keyframes stage {
+    0% { opacity: 0; clip-path: inset(0 50% 0 50%); }
+    18% { opacity: 1; clip-path: inset(0 0 0 0); }
+    75% { opacity: 1; clip-path: inset(0 0 0 0); }
+    100% { opacity: 0; clip-path: inset(0 0 0 0); }
+  }
+  .stage-banner.show b { animation: track 1.9s ease-out forwards; }
+  @keyframes track { from { letter-spacing: .7em; } to { letter-spacing: .3em; } }
 
   /* Temporary animation demo */
   .demo-card {
@@ -368,11 +496,78 @@
   .demo-note { margin: 0; color: var(--muted); font-size: .88rem; text-align: center; }
   #demo-board { --bsize: min(86vw, calc(100dvh - 300px), 440px); }
   .demo-btns { width: 100%; }
-  .demo-btns .btn { flex: 1 1 0; font-weight: 800; letter-spacing: .08em; min-height: 52px; }
+  .demo-btns .btn { flex: 1 1 0; letter-spacing: .16em; min-height: 52px; color: #fff; }
+  .demo-btns .btn:hover:not(:disabled) { filter: brightness(1.15); color: #fff; }
   .demo-btns .hit { background: linear-gradient(180deg, #c2410c, #9a2f07); border-color: rgba(255,150,90,.5); }
   .demo-btns .miss { background: linear-gradient(180deg, #0e7490, #0b5a70); border-color: rgba(120,220,255,.5); }
   .demo-btns .sink { background: linear-gradient(180deg, #991b1b, #6d1111); border-color: rgba(255,110,110,.5); }
   body.demo-open .board:not(#demo-board) .ocean i { animation-play-state: paused; }
+  body.demo-open main, body.demo-open .status { visibility: hidden; } /* nothing to draw behind the demo */
+  #demo { background: rgba(3, 9, 18, .92); }
+
+  /* ---------- Tactical overlays: radar, reticle, impact tags ---------- */
+  .board-card:not(.hidden) { animation: card-in .55s cubic-bezier(.2, .8, .2, 1) both; }
+  #player-card:not(.hidden) { animation-delay: .08s; }
+  .radar { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: 6px; pointer-events: none; display: none; }
+  body.battle #enemy-board .radar { display: block; }
+  .radar::before { /* range rings + crosshair */
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle, transparent 0 19.6%, rgba(63, 208, 255, .16) 20% 20.4%, transparent 20.8% 39.6%, rgba(63, 208, 255, .13) 40% 40.4%, transparent 40.8% 59.6%, rgba(63, 208, 255, .1) 60% 60.4%, transparent 60.8%),
+      linear-gradient(rgba(63, 208, 255, .12), rgba(63, 208, 255, .12)) center / 1px 100% no-repeat,
+      linear-gradient(rgba(63, 208, 255, .12), rgba(63, 208, 255, .12)) center / 100% 1px no-repeat;
+  }
+  .radar i {
+    position: absolute; left: 50%; top: 50%; width: 150%; height: 150%; margin: -75% 0 0 -75%; border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg 290deg, rgba(63, 208, 255, .05) 310deg, rgba(63, 208, 255, .2) 352deg, rgba(170, 240, 255, .5) 359.5deg, transparent 360deg);
+    mix-blend-mode: screen; animation: sweep 5s linear infinite; will-change: transform;
+  }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+
+  .reticle { position: absolute; z-index: 4; pointer-events: none; left: calc(var(--c) * 10%); top: calc(var(--r) * 10%); width: 10%; height: 10%; display: none; }
+  .reticle.show { display: block; }
+  .reticle .ring { position: absolute; inset: -38%; border-radius: 50%; border: 1.5px dashed rgba(63, 208, 255, .85); animation: spin 4s linear infinite; }
+  .reticle .box {
+    position: absolute; inset: 4%; --k: var(--cyan);
+    background:
+      linear-gradient(var(--k), var(--k)) top left / 34% 2px no-repeat, linear-gradient(var(--k), var(--k)) top left / 2px 34% no-repeat,
+      linear-gradient(var(--k), var(--k)) top right / 34% 2px no-repeat, linear-gradient(var(--k), var(--k)) top right / 2px 34% no-repeat,
+      linear-gradient(var(--k), var(--k)) bottom left / 34% 2px no-repeat, linear-gradient(var(--k), var(--k)) bottom left / 2px 34% no-repeat,
+      linear-gradient(var(--k), var(--k)) bottom right / 34% 2px no-repeat, linear-gradient(var(--k), var(--k)) bottom right / 2px 34% no-repeat;
+    filter: drop-shadow(0 0 4px rgba(63, 208, 255, .8));
+  }
+  .reticle .dot { position: absolute; left: 50%; top: 50%; width: 10%; height: 10%; min-width: 3px; min-height: 3px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .reticle .tag {
+    position: absolute; left: 100%; bottom: 100%; margin: 0 0 2px 2px; padding: 2px 5px; border-radius: 3px; white-space: nowrap;
+    font: 800 calc(var(--bsize) / 36) var(--mono); letter-spacing: .08em; color: #03141f; background: var(--cyan);
+  }
+  .reticle.flip .tag { left: auto; right: 100%; margin: 0 2px 2px 0; }
+  .reticle.low .tag { bottom: auto; top: 100%; margin-top: 2px; }
+  .reticle.locked .ring { border-color: rgba(255, 90, 54, .9); animation-duration: 1s; }
+  .reticle.locked .box { --k: #ff5a36; filter: drop-shadow(0 0 5px rgba(255, 90, 54, .9)); animation: lock .45s ease-in-out infinite alternate; }
+  .reticle.locked .dot { background: #ff5a36; box-shadow: 0 0 8px #ff5a36; }
+  .reticle.locked .tag { background: #ff5a36; color: #fff; }
+  .xhair { position: absolute; z-index: 2; pointer-events: none; display: none; background: rgba(63, 208, 255, .28); }
+  .xhair.show { display: block; }
+  .xhair.h { left: 0; right: 0; height: 1px; top: calc(var(--r) * 10% + 5%); }
+  .xhair.v { top: 0; bottom: 0; width: 1px; left: calc(var(--c) * 10% + 5%); }
+  .cols span.hot, .rows span.hot { color: #03141f; background: var(--cyan); border-radius: 4px; text-shadow: none; box-shadow: 0 0 10px rgba(63, 208, 255, .6); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .float-tag {
+    position: absolute; z-index: 6; pointer-events: none; transform: translate(-50%, -50%);
+    font: 800 calc(var(--bsize) / 20)/1 var(--display); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap;
+    animation: float-up 1.3s ease-out forwards;
+  }
+  .float-tag.hit { color: #ffd2b8; text-shadow: 0 0 12px rgba(255, 90, 40, .9), 0 2px 2px rgba(0, 0, 0, .7); }
+  .float-tag.miss { color: #e6f6ff; text-shadow: 0 0 12px rgba(120, 210, 255, .8), 0 2px 2px rgba(0, 0, 0, .7); font-size: calc(var(--bsize) / 26); }
+  .float-tag.sunk { color: #fff; text-shadow: 0 0 14px rgba(255, 40, 30, 1), 0 2px 2px rgba(0, 0, 0, .7); }
+  @keyframes float-up {
+    0% { opacity: 0; transform: translate(-50%, -20%) scale(.6); }
+    15% { opacity: 1; transform: translate(-50%, -60%) scale(1.08); }
+    30% { transform: translate(-50%, -70%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -170%) scale(1); }
+  }
 
   .hidden { display: none !important; }
 
@@ -397,7 +592,18 @@
     .seg button { font-size: .9rem; }
     .panel .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   }
+  @media (max-width: 760px) {
+    .status { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .turn-box { grid-column: 1 / -1; grid-row: 1; }
+    .force { min-height: 0; padding: 6px 10px; }
+  }
   @media (max-width: 600px) {
+    .brand-sub { display: none; }
+    h1 { letter-spacing: .14em; font-size: 1.05rem; }
+    .brand svg { width: 30px; height: 30px; }
+    .header-actions { gap: 6px; }
+    .header-actions .btn:not(.icon-btn) { padding: 8px 10px; font-size: .72rem; letter-spacing: .08em; }
+    .btn.demo-open .long { display: none; }
     body.battle { --enemy-size: min(92vw, calc(100dvh - 250px)); --player-size: min(80vw, 320px); }
     .seg button { font-size: .85rem; padding: 6px; }
     body.setup #player-sub { display: none; }
@@ -418,9 +624,15 @@
     .ship-el.sinking .ship-body { transform: rotate(-5deg) scale(.86); filter: sepia(.45) hue-rotate(165deg) saturate(.75) brightness(.58) blur(.4px); opacity: .78; }
     .shake-s, .shake-l, .board.shake-bad { animation: none !important; }
     .banner.show { animation: banner-fade 2s ease forwards; }
-    .modal-card { animation: none; }
+    .radar i, .reticle .ring, .reticle.locked .box, .btn.primary:not(:disabled), .end-rays, .stage-banner.show b { animation: none !important; }
+    .board-card:not(.hidden), .panel, .modal, .dialog-card { animation: none !important; }
+    .float-tag { animation: float-fade 1.2s ease forwards; }
+    .end-kicker, .end-card .big, .end-card h2, .end-card p, .stats div, .end-card .row { animation: none !important; opacity: 1 !important; }
+    .end-card h2 { letter-spacing: .12em; }
+    .stage-banner.show { animation: banner-fade 1.6s ease forwards; }
   }
   @keyframes banner-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes float-fade { 0%, 60% { opacity: 1; transform: translate(-50%, -80%); } 100% { opacity: 0; transform: translate(-50%, -80%); } }
 </style>
 </head>
 <body class="setup">
@@ -453,23 +665,37 @@
   <header>
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#0ea5e9" opacity=".18"/><path d="M10 38h44l-6 10H16z" fill="#c9d4e0"/><rect x="24" y="28" width="16" height="10" rx="2" fill="#9aa9bb"/><rect x="30" y="18" width="3" height="10" fill="#9aa9bb"/><path d="M6 50c4 0 4 3 8 3s4-3 8-3 4 3 8 3 4-3 8-3 4 3 8 3 4-3 8-3 4 3 8 3" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-      <h1>Battleship</h1>
+      <div class="brand-text"><h1>Battleship</h1><span class="brand-sub">Naval command</span></div>
     </div>
     <div class="header-actions">
+      <button class="btn icon-btn" id="sound-btn" aria-pressed="false" aria-label="Mute sound" title="Mute / unmute sound">
+        <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+        <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
+      </button>
       <button class="btn demo-open" id="demo-btn">&#9654; <span class="long">Animation </span>demo</button>
       <button class="btn ghost" id="new-game-btn">New game</button>
     </div>
   </header>
 
   <div class="status" id="status" data-turn="setup">
-    <div class="status-inner"><span class="dot"></span><span id="status-text">Place your ships</span></div>
-    <div class="last-action" id="last-action"></div>
+    <div class="force you setup-hide" id="force-you">
+      <div class="force-top"><span class="force-label">Your fleet</span><span class="force-count" id="you-count">5<small> / 5</small></span></div>
+      <div class="hull" id="you-hull"></div>
+    </div>
+    <div class="turn-box" id="turn-box">
+      <div class="status-inner"><span class="turn-tag" id="turn-tag">Setup</span><span id="status-text">Place your ships</span></div>
+      <div class="last-action" id="last-action"></div>
+    </div>
+    <div class="force enemy setup-hide" id="force-enemy">
+      <div class="force-top"><span class="force-label">Enemy fleet</span><span class="force-count" id="enemy-count">5<small> / 5</small></span></div>
+      <div class="hull" id="enemy-hull"></div>
+    </div>
   </div>
 
   <main id="main">
     <section class="panel" id="setup-panel">
       <div>
-        <h2>Place your fleet</h2>
+        <h2>Deploy your fleet</h2>
         <p>Pick a ship, then tap your board to place it. Tap a placed ship to move it.</p>
       </div>
       <div class="ship-list" id="ship-list"></div>
@@ -497,7 +723,7 @@
     </section>
 
     <section class="board-card hidden" id="enemy-card">
-      <div class="card-head"><h2>Enemy waters</h2><p class="sub">Tap a square to fire</p></div>
+      <div class="card-head"><h2>Enemy waters</h2><p class="sub">Radar active &middot; tap to fire</p></div>
       <div class="board" id="enemy-board" aria-label="Enemy board"></div>
       <div class="fleet" id="enemy-fleet"></div>
     </section>
@@ -516,18 +742,33 @@
     </div>
   </main>
 
-  <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
-    <div class="modal-card">
+  <div class="modal end-screen hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="end-rays"></div>
+    <div class="end-card">
+      <div class="end-kicker" id="modal-kicker"></div>
       <div class="big" id="modal-icon"></div>
       <h2 id="modal-title"></h2>
       <p id="modal-text"></p>
       <div class="stats" id="modal-stats"></div>
       <div class="row">
-        <button class="btn" id="view-board-btn">View boards</button>
+        <button class="btn" id="view-board-btn">View battlefield</button>
         <button class="btn primary" id="play-again-btn">Play again</button>
       </div>
     </div>
   </div>
+
+  <div class="modal hidden" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="dialog-card">
+      <h2 id="confirm-title">Abandon battle?</h2>
+      <p>Your current battle will be lost and you'll return to fleet deployment.</p>
+      <div class="row">
+        <button class="btn" id="confirm-no">Keep fighting</button>
+        <button class="btn primary" id="confirm-yes">Abandon</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage-banner" id="stage-banner"><b>Battle stations</b><span>Enemy fleet detected</span></div>
 
   <div class="modal hidden" id="demo" role="dialog" aria-modal="true" aria-label="Animation demo">
     <div class="demo-card">
@@ -846,6 +1087,100 @@
   }
 
   // ======================================================================
+  //  Sound effects, synthesized live with the Web Audio API (no files)
+  // ======================================================================
+  const Sound = (() => {
+    let ctx = null, master = null, noiseBuf = null;
+    let muted = false;
+    try { muted = localStorage.getItem("battleship-muted") === "1"; } catch (e) { /* storage unavailable */ }
+
+    function ac() {
+      if (muted) return null;
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        const comp = ctx.createDynamicsCompressor();
+        master = ctx.createGain(); master.gain.value = 0.6;
+        master.connect(comp); comp.connect(ctx.destination);
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+    function env(g, t, a, peak, dur) {
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + a);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    }
+    function noise({ at = 0, dur = 0.5, type = "lowpass", f0 = 1000, f1 = f0, q = 0.7, gain = 0.5, attack = 0.005 }) {
+      const c = ac(); if (!c) return;
+      const t = c.currentTime + at;
+      const src = c.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const f = c.createBiquadFilter(); f.type = type; f.Q.value = q;
+      f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+      const g = c.createGain(); env(g, t, attack, gain, dur);
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(t, Math.random()); src.stop(t + dur + 0.05);
+    }
+    function tone({ at = 0, dur = 0.3, type = "sine", f0 = 440, f1 = f0, gain = 0.2, attack = 0.005 }) {
+      const c = ac(); if (!c) return;
+      const t = c.currentTime + at;
+      const o = c.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+      const g = c.createGain(); env(g, t, attack, gain, dur);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    const S = {
+      get muted() { return muted; },
+      setMuted(m) {
+        muted = m;
+        try { localStorage.setItem("battleship-muted", m ? "1" : "0"); } catch (e) { /* ignore */ }
+        if (ctx) { if (m) ctx.suspend(); else ctx.resume(); }
+      },
+      unlock() { ac(); },
+      click() { tone({ type: "square", f0: 1300, f1: 900, dur: 0.05, gain: 0.035 }); },
+      ping() { tone({ f0: 1400, f1: 1350, dur: 0.5, gain: 0.06, attack: 0.002 }); tone({ at: 0.12, f0: 1400, f1: 1350, dur: 0.35, gain: 0.025 }); },
+      launch() {
+        noise({ type: "bandpass", f0: 300, f1: 2600, q: 1.2, dur: 0.75, gain: 0.32, attack: 0.04 });
+        tone({ type: "sawtooth", f0: 90, f1: 45, dur: 0.5, gain: 0.07 });
+      },
+      boom(big) {
+        const k = big ? 1.25 : 1;
+        tone({ f0: 120, f1: 38, dur: 0.5 * k, gain: 0.9 });
+        noise({ type: "lowpass", f0: 2400, f1: 160, dur: 1.1 * k, gain: 0.8 * k, attack: 0.003 });
+        noise({ at: 0.05, type: "highpass", f0: 3000, f1: 1800, dur: 0.25, gain: 0.12 });
+        for (let i = 0; i < 5; i++) noise({ at: 0.12 + Math.random() * 0.5, type: "bandpass", f0: 1800 + Math.random() * 1500, q: 3, dur: 0.05, gain: 0.08 });
+      },
+      splash() {
+        noise({ type: "bandpass", f0: 1600, f1: 500, q: 0.9, dur: 0.6, gain: 0.5, attack: 0.004 });
+        noise({ type: "lowpass", f0: 700, f1: 200, dur: 0.4, gain: 0.25 });
+        [0.16, 0.26, 0.38].forEach(at => tone({ at, f0: 700 + Math.random() * 500, f1: 1500 + Math.random() * 400, dur: 0.06, gain: 0.04 }));
+      },
+      sink() {
+        S.boom(true);
+        [0.2, 0.36, 0.52, 0.7].forEach(at => setTimeout(() => S.boom(false), at * 1000));
+        tone({ at: 0.6, type: "sawtooth", f0: 70, f1: 28, dur: 2.4, gain: 0.12, attack: 0.3 });
+        noise({ at: 0.5, type: "lowpass", f0: 500, f1: 90, dur: 2.6, gain: 0.35, attack: 0.3 });
+        for (let i = 0; i < 9; i++) tone({ at: 1 + Math.random() * 1.6, f0: 250 + Math.random() * 450, f1: 600 + Math.random() * 500, dur: 0.07, gain: 0.04 });
+      },
+      alarm() { [0, 0.42].forEach(at => { tone({ at, type: "sawtooth", f0: 330, f1: 440, dur: 0.36, gain: 0.07, attack: 0.03 }); }); },
+      victory() {
+        [[523, 0], [659, 0.14], [784, 0.28], [1047, 0.42]].forEach(([f, at]) => tone({ at, type: "triangle", f0: f, dur: 0.35, gain: 0.16 }));
+        [523, 659, 784, 1047].forEach(f => tone({ at: 0.62, type: "triangle", f0: f, dur: 1.6, gain: 0.09, attack: 0.02 }));
+      },
+      defeat() {
+        [[392, 0], [330, 0.35], [262, 0.7], [196, 1.05]].forEach(([f, at]) => tone({ at, type: "triangle", f0: f, f1: f * 0.98, dur: 0.6, gain: 0.13 }));
+        noise({ at: 0.9, type: "lowpass", f0: 300, f1: 80, dur: 2, gain: 0.2, attack: 0.4 });
+      },
+    };
+    return S;
+  })();
+
+  // ======================================================================
   //  Particle effects engine (canvas 2D)
   //  Board layers use "cell" units (1 = one square); the global layer uses px.
   // ======================================================================
@@ -1146,6 +1481,7 @@
       },
       // Missile from one screen point to another. Resolves on impact.
       launch(from, to, unitPx, muzzleAt) {
+        Sound.launch();
         if (reduced()) return Promise.resolve();
         if (muzzleAt) muzzle(muzzleAt.layer, muzzleAt.x, muzzleAt.y);
         const dist = Math.hypot(to[0] - from[0], to[1] - from[1]);
@@ -1156,12 +1492,14 @@
         return wait(dur);
       },
       hit(L, r, c) {
+        Sound.boom(false);
         if (reduced()) return wait(250);
         explosion(L, c + .5, r + .5, 1);
         shake("s");
         return wait(550);
       },
       miss(L, r, c) {
+        Sound.splash();
         if (reduced()) return wait(250);
         splash(L, c + .5, r + .5);
         return wait(450);
@@ -1170,6 +1508,7 @@
       sink(L, r, c, ship, bannerEl, text) {
         bannerEl.textContent = text;
         bannerEl.classList.remove("show"); void bannerEl.offsetWidth; bannerEl.classList.add("show");
+        Sound.sink();
         if (reduced()) return wait(900);
         explosion(L, c + .5, r + .5, 1.2);
         shake("l");
@@ -1179,6 +1518,35 @@
         }, 180 + i * 150));
         sinkDebris(L, ship.cells);
         return wait(2700);
+      },
+      // Celebration fireworks along the sides of the screen
+      fireworks(seconds) {
+        if (reduced()) return;
+        const cols = ["255,214,110", "120,220,255", "255,255,255", "255,170,90"];
+        const n = Math.round(seconds * 2.2);
+        for (let i = 0; i < n; i++) setTimeout(() => {
+          const W = innerWidth, H = innerHeight;
+          const side = Math.random() < 0.5 ? rand(0.04, 0.26) : rand(0.74, 0.96);
+          const x = W * side, y = H * rand(0.12, 0.5), col = cols[Math.floor(Math.random() * cols.length)];
+          const u = Math.min(W, H) / 10;
+          add(globalLayer, { k: "sp", sp: SP.flash, add: true, x, y, s0: u * 1.2, s1: u * 1.8, life: .25, a: .9 });
+          for (let j = 0; j < 46; j++) {
+            const [vx, vy] = radial(rand(.6, 2.6) * u);
+            add(globalLayer, { k: "spark", add: true, x, y, vx, vy, drag: .25, wind: [0, u * .9], col, lw: 2, len: .045, life: rand(.9, 1.6), a: 1 });
+          }
+        }, i * 450 + rand(0, 200));
+      },
+      // Drifting embers and smoke for defeat
+      embers(seconds) {
+        if (reduced()) return;
+        const n = Math.round(seconds * 14);
+        for (let i = 0; i < n; i++) setTimeout(() => {
+          const W = innerWidth, H = innerHeight;
+          add(globalLayer, { k: "sp", seq: [SP.fire, SP.ember], add: true, x: rand(0, W), y: H + 10, vx: rand(-15, 15), vy: rand(-90, -40), wind: [10, 0],
+            s0: rand(4, 9), s1: rand(2, 4), life: rand(3, 5), a: .9, fi: .1 });
+          if (i % 3 === 0) add(globalLayer, { k: "sp", sp: SP.smoke, x: rand(0, W), y: H + 40, vx: rand(-10, 10), vy: rand(-50, -25),
+            s0: 120, s1: 260, life: rand(4, 6), a: .35, fi: .3 });
+        }, i * (1000 / 14));
       },
       stats() {
         return layers.map(L => ({ parts: L.parts.length, missiles: L.missiles.length, emitters: L.emitters.size,
@@ -1206,6 +1574,8 @@
     timer: null,
     gameId: 0,
     demoOpen: false,
+    target: null,            // square under the mouse on the enemy board
+    startTime: 0,
   };
 
   const $ = id => document.getElementById(id);
@@ -1215,6 +1585,7 @@
     setupPanel: $("setup-panel"), shipList: $("ship-list"),
     status: $("status"), statusText: $("status-text"), lastAction: $("last-action"),
     startBtn: $("start-btn"), modal: $("modal"), playerSub: $("player-sub"),
+    turnBox: $("turn-box"), turnTag: $("turn-tag"),
   };
 
   // ======================================================================
@@ -1228,7 +1599,10 @@
       `<div class="rows">${Array.from({ length: SIZE }, (_, i) => `<span>${i + 1}</span>`).join("")}</div>` +
       `<div class="field">` +
         `<div class="ocean"><i class="water"></i><i class="clouds"></i><i class="caustic"></i><i class="caustic two"></i><i class="swell"></i></div>` +
-        `<div class="ships"></div><div class="cells"></div><canvas class="fx"></canvas><div class="banner"></div>` +
+        `<div class="radar"><i></i></div><div class="ships"></div><div class="cells"></div>` +
+        `<div class="xhair h"></div><div class="xhair v"></div>` +
+        `<div class="reticle"><i class="ring"></i><i class="box"></i><i class="dot"></i><span class="tag"></span></div>` +
+        `<canvas class="fx"></canvas><div class="banner"></div>` +
       `</div>`;
     const field = el.querySelector(".field"), cellsEl = el.querySelector(".cells");
     const cells = [];
@@ -1247,6 +1621,9 @@
     boards[name] = {
       el, field, cells, shipsLayer: el.querySelector(".ships"), shipEls: new Map(), ghost: null,
       banner: el.querySelector(".banner"), layer: FX.makeLayer(el.querySelector(".fx"), field),
+      reticle: el.querySelector(".reticle"), reticleTag: el.querySelector(".reticle .tag"),
+      xh: el.querySelector(".xhair.h"), xv: el.querySelector(".xhair.v"),
+      colLabels: [...el.querySelectorAll(".cols span")], rowLabels: [...el.querySelectorAll(".rows span")],
     };
   }
 
@@ -1333,6 +1710,43 @@
     FX.setEmitters(B.layer, emitters);
   }
 
+  // Targeting reticle: follows the mouse on enemy waters, locks red while a missile is in the air.
+  function setReticle(name, spot) {
+    const B = boards[name];
+    const show = !!spot;
+    B.reticle.classList.toggle("show", show);
+    B.xh.classList.toggle("show", show && !spot.locked);
+    B.xv.classList.toggle("show", show && !spot.locked);
+    B.colLabels.forEach((l, i) => l.classList.toggle("hot", show && i === spot.c));
+    B.rowLabels.forEach((l, i) => l.classList.toggle("hot", show && i === spot.r));
+    if (!show) return;
+    for (const el of [B.reticle, B.xh, B.xv]) { el.style.setProperty("--r", spot.r); el.style.setProperty("--c", spot.c); }
+    B.reticle.classList.toggle("locked", !!spot.locked);
+    B.reticle.classList.toggle("flip", spot.c >= 7);
+    B.reticle.classList.toggle("low", spot.r === 0);
+    B.reticleTag.textContent = spot.label;
+  }
+  function updateReticles() {
+    const aim = state.aim;
+    const canTarget = state.phase === "battle" && state.turn === "player" && !state.busy && !state.demoOpen;
+    let enemySpot = null;
+    if (aim && aim.board === "enemy") enemySpot = { r: aim.r, c: aim.c, locked: true, label: coordName(aim.r, aim.c) };
+    else if (canTarget && state.target && !state.enemy.shots[state.target[0]][state.target[1]])
+      enemySpot = { r: state.target[0], c: state.target[1], label: coordName(state.target[0], state.target[1]) };
+    setReticle("enemy", enemySpot);
+    setReticle("player", aim && aim.board === "player" ? { r: aim.r, c: aim.c, locked: true, label: "Incoming " + coordName(aim.r, aim.c) } : null);
+  }
+
+  // Floating "HIT" / "MISS" text that rises from the impact point
+  function floatTag(name, r, c, text, kind) {
+    const tag = document.createElement("div");
+    tag.className = `float-tag ${kind}`;
+    tag.textContent = text;
+    tag.style.left = `${(c + 0.5) * 10}%`; tag.style.top = `${(r + 0.5) * 10}%`;
+    boards[name].field.appendChild(tag);
+    setTimeout(() => tag.remove(), 1400);
+  }
+
   function cellCenter(name, r, c) {
     const rect = boards[name].field.getBoundingClientRect();
     return [rect.left + (c + .5) * rect.width / SIZE, rect.top + (r + .5) * rect.height / SIZE];
@@ -1361,12 +1775,30 @@
       b.className = "ship-btn" + (placed ? " placed" : "") + (state.selected === i ? " selected" : "");
       b.dataset.index = i;
       b.innerHTML = `<span><span class="name">${def.name}</span><span class="size">${def.size} squares</span><span class="done">\u2713<span class="done-word"> Placed</span></span></span>
-        <span class="pips">${"<i></i>".repeat(def.size)}</span>`;
+        <span class="mini">${shipSVG(def.name, def.size, "h")}</span>`;
       els.shipList.appendChild(b);
     });
   }
 
-  function setStatus(text, turn) { els.statusText.textContent = text; els.status.dataset.turn = turn; }
+  function setStatus(text, turn) {
+    els.statusText.textContent = text;
+    const round = String(Math.min(99, state.stats.playerShots + (turn === "player" ? 1 : 0))).padStart(2, "0");
+    els.turnTag.textContent = turn === "setup" ? "Setup" : turn === "over" ? "Final" : `Turn ${round}`;
+    if (els.status.dataset.turn !== turn) {
+      els.status.dataset.turn = turn;
+      els.turnBox.classList.remove("flash"); void els.turnBox.offsetWidth; els.turnBox.classList.add("flash");
+    }
+  }
+
+  function renderForce(prefix, side) {
+    const afloat = side.ships.filter(s => !isSunk(s)).length;
+    $(`${prefix}-count`).innerHTML = `${afloat}<small>/${FLEET.length}</small>`;
+    const hull = $(`${prefix}-hull`);
+    const total = FLEET.reduce((n, f) => n + f.size, 0);
+    const hits = side.ships.reduce((n, s) => n + s.hits, 0);
+    if (hull.children.length !== total) hull.innerHTML = "<i></i>".repeat(total);
+    [...hull.children].forEach((seg, i) => seg.classList.toggle("dead", i >= total - hits));
+  }
   function setLastAction(html) { els.lastAction.innerHTML = html; }
 
   function placementAt(r, c) {
@@ -1393,6 +1825,10 @@
     renderBoard("enemy", state.enemy, { showShips: false, revealAll: state.phase === "over", last: state.lastShot.enemy, sinking: state.sinking,
       aim: aim && aim.board === "enemy" ? aim : null });
     boards.player.el.classList.toggle("placing", state.phase === "setup");
+    updateReticles();
+    $("force-you").classList.toggle("setup-hide", state.phase === "setup");
+    $("force-enemy").classList.toggle("setup-hide", state.phase === "setup");
+    if (state.phase !== "setup") { renderForce("you", state.player); renderForce("enemy", state.enemy); }
 
     const playerCanFire = state.phase === "battle" && state.turn === "player" && !state.busy;
     boards.enemy.el.classList.toggle("targetable", playerCanFire);
@@ -1456,9 +1892,13 @@
     state.phase = "battle";
     state.turn = "player";
     state.hover = null;
-    setStatus("Your turn \u2014 tap a square in Enemy waters", "player");
+    state.startTime = Date.now();
+    setStatus("Your turn \u2014 choose a target", "player");
     setLastAction("The enemy fleet is hidden somewhere out there. Good luck, Admiral!");
     render();
+    const banner = $("stage-banner");
+    banner.classList.remove("show"); void banner.offsetWidth; banner.classList.add("show");
+    Sound.alarm();
   }
 
   function describe(who, r, c, res) {
@@ -1479,6 +1919,7 @@
       if (gid === state.gameId) { state.sinking = null; render(); }
     } else {
       render();
+      floatTag(boardName, r, c, res.result === "hit" ? "Hit" : "Miss", res.result);
       await (res.result === "hit" ? FX.hit(B.layer, r, c) : FX.miss(B.layer, r, c));
     }
   }
@@ -1538,8 +1979,9 @@
     state.busy = false;
     if (allSunk(state.player)) { endGame("computer"); return; }
     state.turn = "player";
-    setStatus("Your turn \u2014 tap a square in Enemy waters", "player");
+    setStatus("Your turn \u2014 choose a target", "player");
     render();
+    Sound.ping();
   }
 
   const TROPHY = '<svg viewBox="0 0 64 64"><path d="M20 8h24v14a12 12 0 0 1-24 0z" fill="#facc15"/><path d="M20 12H10v4a10 10 0 0 0 10 10M44 12h10v4a10 10 0 0 1-10 10" stroke="#facc15" stroke-width="4" fill="none"/><rect x="29" y="34" width="6" height="10" fill="#eab308"/><rect x="20" y="44" width="24" height="8" rx="2" fill="#ca8a04"/></svg>';
@@ -1554,25 +1996,35 @@
     render();
     const s = state.stats;
     const acc = s.playerShots ? Math.round((s.playerHits / s.playerShots) * 100) : 0;
-    const shipsLeft = (won ? state.player : state.enemy).ships.filter(sh => !isSunk(sh)).length;
+    const lost = state.player.ships.filter(sh => isSunk(sh)).length;
+    const sunk = state.enemy.ships.filter(sh => isSunk(sh)).length;
+    const secs = Math.max(0, Math.round((Date.now() - state.startTime) / 1000));
+    const time = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+    els.modal.classList.toggle("win", won);
+    els.modal.classList.toggle("lose", !won);
+    $("modal-kicker").textContent = won ? "Mission accomplished" : "Fleet lost";
     $("modal-icon").innerHTML = won ? TROPHY : ANCHOR;
     $("modal-title").textContent = won ? "Victory!" : "Defeat";
     $("modal-text").textContent = won
       ? "You sank the entire enemy fleet. Well played, Admiral!"
-      : "The computer sank all of your ships. Want a rematch?";
-    $("modal-stats").innerHTML =
-      `<div><b>${s.playerShots}</b><small>Your shots</small></div>` +
-      `<div><b>${acc}%</b><small>Accuracy</small></div>` +
-      `<div><b>${shipsLeft}</b><small>${won ? "Your ships left" : "Enemy ships left"}</small></div>`;
+      : "The computer sank all of your ships. Regroup and try again.";
+    $("modal-stats").innerHTML = [
+      [s.playerShots, "Shots fired"], [s.playerHits, "Hits"], [`${acc}%`, "Accuracy"],
+      [`${sunk}/${FLEET.length}`, "Enemy ships sunk"], [`${lost}/${FLEET.length}`, "Ships lost"], [time, "Battle time"],
+    ].map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join("");
     const gid = state.gameId;
-    setTimeout(() => { if (gid === state.gameId && state.phase === "over") els.modal.classList.remove("hidden"); }, 600);
+    setTimeout(() => {
+      if (gid !== state.gameId || state.phase !== "over") return;
+      els.modal.classList.remove("hidden");
+      if (won) { Sound.victory(); FX.fireworks(4); } else { Sound.defeat(); FX.embers(5); }
+    }, 700);
   }
 
   function newGame() {
     if (state.timer) clearTimeout(state.timer);
     Object.assign(state, {
       phase: "setup", turn: "player", player: newSide(), enemy: newSide(),
-      selected: 0, dir: "h", busy: false, hover: null, timer: null, aim: null, sinking: null,
+      selected: 0, dir: "h", busy: false, hover: null, timer: null, aim: null, sinking: null, target: null,
       lastShot: { player: null, enemy: null },
       stats: { playerShots: 0, playerHits: 0, computerShots: 0, computerHits: 0 },
       gameId: state.gameId + 1,
@@ -1597,6 +2049,7 @@
   }
   function renderDemo() {
     renderBoard("demo", demo.side, { showShips: true, last: demo.last, sinking: demo.sinking, aim: demo.aim });
+    setReticle("demo", demo.aim ? { r: demo.aim.r, c: demo.aim.c, locked: true, label: coordName(demo.aim.r, demo.aim.c) } : null);
     document.querySelectorAll("[data-demo]").forEach(b => { b.disabled = demo.busy; });
   }
   const pickOne = list => list[Math.floor(Math.random() * list.length)];
@@ -1640,6 +2093,7 @@
       demo.sinking = null;
     } else {
       renderDemo();
+      floatTag("demo", target[0], target[1], res.result === "hit" ? "Hit" : "Miss", res.result);
       await (res.result === "hit" ? FX.hit(B.layer, target[0], target[1]) : FX.miss(B.layer, target[0], target[1]));
     }
     demo.busy = false;
@@ -1695,9 +2149,33 @@
   $("clear-btn").addEventListener("click", () => { state.player.ships = []; state.selected = 0; render(); });
   els.startBtn.addEventListener("click", startBattle);
   $("new-game-btn").addEventListener("click", () => {
-    if (state.phase === "battle" && !confirm("Abandon this battle and start a new game?")) return;
+    if (state.phase === "battle") { $("confirm").classList.remove("hidden"); return; }
     newGame();
   });
+  $("confirm-no").addEventListener("click", () => $("confirm").classList.add("hidden"));
+  $("confirm-yes").addEventListener("click", () => { $("confirm").classList.add("hidden"); newGame(); });
+
+  // Sound: unlock audio on the first interaction, click feedback, mute toggle
+  const soundBtn = $("sound-btn");
+  const syncSoundBtn = () => {
+    soundBtn.setAttribute("aria-pressed", Sound.muted ? "true" : "false");
+    soundBtn.setAttribute("aria-label", Sound.muted ? "Unmute sound" : "Mute sound");
+  };
+  syncSoundBtn();
+  soundBtn.addEventListener("click", () => { Sound.setMuted(!Sound.muted); syncSoundBtn(); Sound.click(); });
+  document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
+  document.addEventListener("click", e => {
+    if (e.target.closest(".btn:not(#sound-btn):not([data-demo]), .ship-btn, .seg button")) Sound.click();
+  });
+
+  // Targeting reticle follows the mouse over enemy waters
+  enemyBoardEl.addEventListener("pointermove", e => {
+    if (e.pointerType !== "mouse") return;
+    const p = cellFromEvent(e);
+    const same = p && state.target && p[0] === state.target[0] && p[1] === state.target[1];
+    if (!same) { state.target = p; updateReticles(); }
+  });
+  enemyBoardEl.addEventListener("pointerleave", () => { state.target = null; updateReticles(); });
   $("play-again-btn").addEventListener("click", newGame);
   $("view-board-btn").addEventListener("click", () => els.modal.classList.add("hidden"));
   $("demo-btn").addEventListener("click", openDemo);
@@ -1706,12 +2184,12 @@
   document.querySelectorAll("[data-demo]").forEach(b => b.addEventListener("click", () => runDemo(b.dataset.demo)));
   document.addEventListener("keydown", e => {
     if (state.phase === "setup" && !state.demoOpen && (e.key === "r" || e.key === "R")) { state.dir = state.dir === "h" ? "v" : "h"; render(); }
-    if (e.key === "Escape") { els.modal.classList.add("hidden"); if (state.demoOpen) closeDemo(); }
+    if (e.key === "Escape") { els.modal.classList.add("hidden"); $("confirm").classList.add("hidden"); if (state.demoOpen) closeDemo(); }
   });
   window.addEventListener("resize", () => render());
 
   // Exposed only so automated tests can check the rules and effects.
-  window.__battleship = { state, demo, fireAt, computerChooseShot, placeFleetRandomly, newSide, FLEET, SIZE, allSunk, isSunk, fx: FX };
+  window.__battleship = { state, demo, fireAt, computerChooseShot, placeFleetRandomly, newSide, FLEET, SIZE, allSunk, isSunk, fx: FX, sound: Sound };
 
   render();
 })();
