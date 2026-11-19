@@ -46,6 +46,7 @@ pip install playwright
 playwright install chromium
 python3 -m http.server 8080 &     # serve the game at http://localhost:8080
 python3 tests/test_game.py
+python3 tests/test_qa_extra.py   # extra rule, reset, phone and console-error checks
 ```
 
 The tests check the placement rules, turn order, hits, misses, sunk ships, the winner announcement, the computer opponent (600 simulated games), that the layout fits common tablet and phone screens, that every animation actually plays (missiles, explosions, splashes, sinking), that the demo never changes the real game, animation smoothness, and the reduced-motion mode.
