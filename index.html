@@ -623,6 +623,13 @@
     .board-card, .panel { padding: 10px; } h1 { font-size: 1.2rem; }
     .btn { padding: 8px 12px; }
   }
+  /* Phones held sideways: short screen, so place the boards side by side and let the page scroll */
+  @media (orientation: landscape) and (max-height: 500px) {
+    body.battle { --enemy-size: var(--board-size); --player-size: var(--board-size);
+      --board-size: min(calc((100vw - 110px) / 2), max(230px, calc(100dvh - 110px)), 540px); }
+    .header-actions .btn:not(.icon-btn) { padding: 8px 10px; font-size: .72rem; letter-spacing: .08em; }
+    .btn.demo-open .long { display: none; }
+  }
 
   /* Respect "reduce motion": no drifting water, no shaking, no sinking motion */
   @media (prefers-reduced-motion: reduce) {
@@ -2081,7 +2088,7 @@
   // ======================================================================
   //  Temporary animation demo (its own practice board; never touches the game)
   // ======================================================================
-  const demo = { side: null, busy: false, last: null, sinking: null, aim: null };
+  const demo = { side: null, busy: false, last: null, sinking: null, aim: null, run: 0 };
   function resetDemo() {
     const side = newSide();
     const layout = [["Carrier", 1, 1, "h"], ["Battleship", 3, 8, "v"], ["Cruiser", 4, 1, "h"], ["Submarine", 7, 2, "h"], ["Destroyer", 6, 6, "v"]];
@@ -2121,11 +2128,12 @@
       target = remaining[remaining.length - 1];
     }
     demo.busy = true;
+    const run = ++demo.run;
     demo.aim = { r: target[0], c: target[1] };
     renderDemo();
     const card = document.querySelector(".demo-card").getBoundingClientRect();
     await FX.launch([card.left + card.width / 2, card.bottom - 10], () => cellCenter("demo", target[0], target[1]), cellPx("demo"));
-    if (!state.demoOpen) { demo.busy = false; return; }
+    if (run !== demo.run) return; // demo was closed while this missile was in the air
     demo.aim = null;
     const res = fireAt(side, target[0], target[1]);
     demo.last = target;
@@ -2133,12 +2141,14 @@
     if (res.result === "sunk") {
       demo.sinking = res.ship; renderDemo();
       await FX.sink(B.layer, target[0], target[1], res.ship, B.banner, `${res.ship.name} destroyed`);
+      if (run !== demo.run) return;
       demo.sinking = null;
     } else {
       renderDemo();
       floatTag("demo", target[0], target[1], res.result === "hit" ? "Hit" : "Miss", res.result);
       await (res.result === "hit" ? FX.hit(B.layer, target[0], target[1]) : FX.miss(B.layer, target[0], target[1]));
     }
+    if (run !== demo.run) return;
     demo.busy = false;
     renderDemo();
   }
@@ -2152,6 +2162,7 @@
   function closeDemo() {
     state.demoOpen = false;
     demo.busy = false;
+    demo.run++;
     document.body.classList.remove("demo-open");
     $("demo").classList.add("hidden");
   }
