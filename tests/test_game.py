@@ -171,16 +171,21 @@ with sync_playwright() as p:
 
     # ---------- 4. Battle: lose (portrait tablet) ----------
     pg.set_viewport_size({'width': 768, 'height': 1024})
+    # Advanced, so the computer wins well within the 95 shots we can fire without sinking anything (69 at most in the simulations above).
+    pg.click('#skill-seg button[data-skill="advanced"]')
     pg.click('#random-btn'); pg.click('#start-btn')
-    enemy = {tuple(c) for s in S('window.__battleship.state.enemy.ships.map(s=>s.cells)') for c in s}
+    enemyShips = S('window.__battleship.state.enemy.ships.map(s=>s.cells)')
+    enemy = {tuple(c) for s in enemyShips for c in s}
     misses = [(r, c) for r in range(10) for c in range(10) if (r, c) not in enemy]
+    # If that's not enough, hit every enemy ship except its last square, so nothing is sunk and we can't win.
+    misses += [tuple(c) for s in enemyShips for c in s[:-1]]
     shotsTaken = 0
     for (r, c) in misses:
         pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
         if S('window.__battleship.state.phase') == 'over': break
         cell('enemy', r, c).click(); shotsTaken += 1
         if shotsTaken == 20:
-            pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
+            pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
             pg.screenshot(path=OUT + 'battle_portrait.png')
     pg.wait_for_selector('#modal:not(.hidden)')
     pg.wait_for_timeout(1800)
@@ -415,3 +420,4 @@ with sync_playwright() as p:
     check(not errors, f'No JavaScript errors {errors}')
     b.close()
 print('\nFAILURES:', fails if fails else 'none')
+sys.exit(1 if fails else 0)

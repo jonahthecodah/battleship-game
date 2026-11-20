@@ -20,6 +20,10 @@ A fully playable Battleship game for the web browser: you against the computer o
 - **Animation demo (temporary):** the "Animation demo" button opens a practice board with HIT, MISS and SINK SHIP buttons to replay each effect. It never affects the real game.
 - **Reduced motion:** if your device is set to reduce motion, the game skips missiles, shaking and sinking motion and shows results instantly.
 
+## Play online
+
+The latest release is live at https://jonahthecodah.github.io/battleship-game/. The version number is shown under the title, and `CHANGELOG.md` lists what changed in each version.
+
 ## How to run it
 
 No installation is needed. The whole game is a single file, `index.html`.
@@ -35,6 +39,9 @@ To have it at a web address on your tablet, the same file can be served by any s
 | --- | --- |
 | `index.html` | The complete game: screen layout, styling and game rules in one file |
 | `tests/test_game.py` | Automated tests that play the game in a browser and check it works correctly |
+| `tests/test_qa_extra.py` | Extra automated checks: placement rules, turn guards, computer opponent, resets, phones, console errors |
+| `CHANGELOG.md` | What changed in each version |
+| `RELEASING.md` | How versions are numbered, tested, approved, tagged and published |
 | `docs/screenshot.png` | The screenshot shown above |
 
 ## Running the automated tests (optional, for developers)
@@ -46,6 +53,9 @@ pip install playwright
 playwright install chromium
 python3 -m http.server 8080 &     # serve the game at http://localhost:8080
 python3 tests/test_game.py
+python3 tests/test_qa_extra.py   # extra rule, reset, phone and console-error checks
+# or run every suite in one go (starts the server if needed, keeps going after a failure):
+scripts/run_tests.sh
 ```
 
 The tests check the placement rules, turn order, hits, misses, sunk ships, the winner announcement, the computer opponent (600 simulated games), that the layout fits common tablet and phone screens, that every animation actually plays (missiles, explosions, splashes, sinking), that the demo never changes the real game, animation smoothness, and the reduced-motion mode.
