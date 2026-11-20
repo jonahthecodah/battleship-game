@@ -10,9 +10,15 @@ The game uses [Semantic Versioning](https://semver.org/): **MAJOR.MINOR.PATCH**.
 
 The version lives in one place, `<meta name="app-version" content="X.Y.Z">` in `index.html`. The same number is shown under the title in the game (`id="app-version"`), and it heads the newest entry in `CHANGELOG.md`. `scripts/release.sh check` makes sure all three agree.
 
-## Hosting
+## Deployment vs. version tracking
 
-The live game is published by **GitHub Pages** from the `main` branch, root folder: https://jonahthecodah.github.io/battleship-game/. Every push to `main` is published automatically within a few minutes. **Merging to `main` is therefore the deployment.** Only merge pull requests that are ready to go live.
+| What | Does what |
+|---|---|
+| **Merging an approved pull request into `main`** | **Deploys the game.** GitHub Pages publishes `main` (root folder) to https://jonahthecodah.github.io/battleship-game/ automatically, within a few minutes. No other step is needed, and nothing can hold a merged change back. |
+| **Git tag `vX.Y.Z`** | Records which commit is version X.Y.Z. It doesn't deploy anything. |
+| **GitHub Release** | Publishes the short release notes for that tag. It doesn't deploy anything either. |
+
+Because every merge goes live, **every pull request that changes `index.html` must raise the version**, and CI fails if it doesn't. That way, the version shown in the game always identifies exactly what's live. Pull requests that change only docs or tests don't affect the game, so they can keep the version.
 
 ## Release steps
 
@@ -20,16 +26,16 @@ The live game is published by **GitHub Pages** from the `main` branch, root fold
 2. **Version and notes.** In the same pull request:
    - Raise the version in both places in `index.html` (the `<meta>` tag and the `app-version` label).
    - Add a new `## [X.Y.Z] - YYYY-MM-DD` entry at the top of `CHANGELOG.md` with short release notes under *Fixed*, *Added* or *Changed*.
-   - A pull request that shouldn't be released yet can leave the version alone, and it will go out with the next release.
-3. **Automated tests.** The **Tests** workflow (`.github/workflows/tests.yml`) runs the version check, `tests/test_game.py` and `tests/test_qa_extra.py` on every pull request. It must be green.
-4. **Human approval.** The owner reviews and approves the pull request, then merges it. Merging deploys it.
-5. **Tag.** Tag the merge commit on `main` and push the tag:
+   - A change that isn't ready to go live must not be merged yet. Merging deploys it, whatever the version says.
+3. **Automated tests.** The **Tests** workflow (`.github/workflows/tests.yml`, check name `tests`) must be green. It checks that the version is consistent and was raised, then runs `scripts/run_tests.sh`. That script runs both browser suites (`tests/test_game.py` and `tests/test_qa_extra.py`) even when the first one fails, and fails if either suite fails. Run the same script locally with `scripts/run_tests.sh`.
+4. **Human approval and deployment.** The owner reviews and approves the pull request, then merges it. **This merge is the deployment:** GitHub Pages publishes it within a few minutes.
+5. **Tag (version tracking).** Tag the merge commit on `main` and push the tag:
    ```bash
    git checkout main && git pull
    git tag -a vX.Y.Z -m "vX.Y.Z"
    git push origin vX.Y.Z
    ```
-6. **Release notes and live check.** Pushing the tag starts the **Release** workflow (`.github/workflows/release.yml`). It:
+6. **Release notes and live check (version tracking).** Pushing the tag starts the **Release** workflow (`.github/workflows/release.yml`). It:
    - checks that the tag matches the version in `index.html`, and that the tag is on `main`
    - waits until the live site serves that version (`scripts/release.sh verify-live X.Y.Z`)
    - publishes a GitHub release using the notes from `CHANGELOG.md`

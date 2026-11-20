@@ -16,9 +16,10 @@ jobs:
         run: pip install playwright && python -m playwright install --with-deps chromium
       - name: Check version
         run: scripts/release.sh check
-      - name: Run browser tests
+      - name: Check version was raised
+        if: github.event_name == 'pull_request'
         run: |
-          python3 -m http.server 8080 > /dev/null 2>&1 &
-          sleep 1
-          python3 tests/test_game.py
-          python3 tests/test_qa_extra.py
+          git fetch -q --depth=1 origin "${{ github.base_ref }}"
+          scripts/release.sh bumped "origin/${{ github.base_ref }}"
+      - name: Run browser tests
+        run: scripts/run_tests.sh
