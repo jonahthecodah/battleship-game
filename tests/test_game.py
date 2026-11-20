@@ -185,7 +185,7 @@ with sync_playwright() as p:
         if S('window.__battleship.state.phase') == 'over': break
         cell('enemy', r, c).click(); shotsTaken += 1
         if shotsTaken == 20:
-            pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy)', timeout=15000)
+            pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
             pg.screenshot(path=OUT + 'battle_portrait.png')
     pg.wait_for_selector('#modal:not(.hidden)')
     pg.wait_for_timeout(1800)
