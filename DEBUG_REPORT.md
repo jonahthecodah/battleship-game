@@ -106,8 +106,11 @@ This is in the test tooling, not the game.
 This is in the test tooling, not the game.
 - **Actual:** the "lose" part of `tests/test_game.py` fired only at the 83 empty enemy squares and then waited for the defeat screen. The computer (Intermediate) sometimes needs more than 83 shots (up to 98 in the simulations), so the player ran out of shots, the defeat screen never came, and the test crashed after 30 s. This happened on GitHub after the push for BUG-9.
 - **Reproduced:** ran the same loop at Beginner, where the computer averages 84 shots. Both games timed out after 83 shots, with the computer on 15 of 17 hits.
-- **Fix:** after the empty squares, the test keeps firing at enemy ship squares, leaving one square so the player never wins. The player now has 99 shots; at Intermediate, which this test uses, the computer never needed more than 98 in the simulations.
-- **Verified:** with the fix, a Beginner game that needed 84 shots ended in defeat as expected, as did 2 Intermediate games. The full run passes (section 3).
+- **Fix:** the defeat game now runs at Advanced, where the computer needed at most 69 shots in the simulations. If even that runs out, the test hits every enemy ship except its last square, so no enemy ship is sunk and the player can't win; that gives 95 shots in total.
+  - A first version of this fix (keep firing at enemy squares, leaving only one square) was flagged by the next Devin Review, and both points were correct. It could sink enemy ships, which made the "enemy ships revealed" check fail, and the computer can need 100 shots (Beginner did in the simulations), which is more turns than the player can take without winning.
+- **Verified:**
+  - To exercise the fallback, ran the same loop at Beginner (random shots). The 2 games that went past 83 shots (84 and 85) ended in defeat, with all 5 enemy ships shown as revealed and none sunk. 2 of 7 Beginner games needed more than 95 shots, which is why the real test uses Advanced.
+  - The full run passes (section 3); its defeat came after 45 player shots.
 
 ## 3. Verification results
 
@@ -173,3 +176,10 @@ Devin Review raised four findings on the release changes. Each one was checked:
 | Unversioned merges go live immediately | **Real gap in the process** (not a game defect) | GitHub Pages deploys every merge to `main`, so a pull request that changed the game without raising its version would go live under the old version number. `RELEASING.md` now says clearly that merging deploys, and that tags and GitHub Releases only track versions and hold release notes. CI's new `scripts/release.sh bumped` step fails any pull request that changes `index.html` without raising the version. Checked locally: it passes this branch (none → 1.0.1), passes an unchanged `index.html`, and compares versions correctly (1.0.10 > 1.0.9; 1.0.1 is not higher than 1.0.1). |
 | The version label is missing on narrow phones | **Intended, not a defect** | Below 461 px the existing header already hides the whole title block (`.brand-text`, with the "Battleship" title) to leave room for the sound, demo and New game buttons. The label belongs to that block, so it hides with the title, and showing it would mean crowding those buttons or changing the header design. The version is still in the page as `<meta name="app-version">`. The test now states this: at 1280, 1024 and 540 px it requires the label to be visible inside the header; at 390 px it requires it to be hidden. |
 | Closing the demo cuts off a battle shake | **Real, but not a meaningful problem; no change** | Reproduced 3 times: fire a hit and open the demo while the missile is in flight. The hit lands while the demo is open, and its shake starts while the battle screen is hidden (`body.demo-open main { visibility: hidden }`). Closing the demo about 190 ms later ends the shake, so the remaining ~0.45 s is never seen. This only affects a shake that started out of view. Shots, turns and results are unchanged, and the shakes from the sink explosions that follow still play. Keeping the shake running would let a demo shake leak into the game again (BUG-8). |
+
+The next review round raised three more findings (the first row covers two of them):
+
+| Finding | Verdict | What was done |
+|---|---|---|
+| The defeat test can fail the "enemy ships revealed" check, and can time out if the computer needs 100 shots | **Real, in the first BUG-10 fix** | Reworked, see BUG-10. |
+| `scripts/run_tests.sh` reuses any server already on port 8080, which could be serving another checkout | **Real** (test tooling) | The script now checks that the server's `index.html` matches this checkout and stops with an error if it doesn't. Checked with a copy whose `index.html` differed: it exited 1 with that message before running any test. |
