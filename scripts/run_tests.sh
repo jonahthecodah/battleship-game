@@ -4,7 +4,12 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PORT=8080
-if ! curl -fs -o /dev/null "http://localhost:$PORT/"; then
+if curl -fs -o /dev/null "http://localhost:$PORT/"; then
+  if ! curl -fs "http://localhost:$PORT/index.html" | cmp -s - index.html; then
+    echo "Port $PORT is serving a different index.html than this checkout. Stop that server or start it from $(pwd)." >&2
+    exit 1
+  fi
+else
   python3 -m http.server "$PORT" > /dev/null 2>&1 &
   SERVER=$!
   trap 'kill $SERVER 2>/dev/null' EXIT
