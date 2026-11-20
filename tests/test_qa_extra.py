@@ -323,13 +323,15 @@ with sync_playwright() as p:
     d.close()
 
     # ---------- 7. Version label ----------
-    for (w, h) in [(1280, 800), (1024, 768), (390, 844)]:
+    # Shown wherever the title is. Below 461 px the existing header hides the whole title block (.brand-text) to fit the buttons.
+    for (w, h, expect_shown) in [(1280, 800, True), (1024, 768, True), (540, 900, True), (390, 844, False)]:
         v = watch(b.new_page(viewport={'width': w, 'height': h}))
         v.goto(URL)
         info = v.evaluate('''() => { const m = document.querySelector('meta[name="app-version"]').content, el = document.getElementById("app-version");
           const r = el.getBoundingClientRect(), hdr = document.querySelector("header").getBoundingClientRect();
           return { meta: m, label: el.textContent, shown: r.width > 0, inHeader: r.bottom <= hdr.bottom + 1 && r.right <= innerWidth }; }''')
         check(info['label'] == 'v' + info['meta'], f"{w}x{h}: version label {info['label']} matches index.html version {info['meta']}")
+        check(info['shown'] == expect_shown, f"{w}x{h}: version label {'shown' if expect_shown else 'hidden with the title'} ({info})")
         check(not info['shown'] or info['inHeader'], f'{w}x{h}: version label stays inside the header ({info})')
         v.close()
 
