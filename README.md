@@ -1,61 +1,61 @@
 # Battleship
 
-A fully playable Battleship game for the web browser: you against the computer on a classic 10x10 board. It works on computers, tablets and phones.
+## ▶ [Play the live game](https://jonahthecodah.github.io/battleship-game/)
+
+**No installation required.** The game runs in any modern browser (Chrome, Safari, Edge or Firefox) on a computer, tablet or phone.
+
+Current release: **[v1.0.1](https://github.com/jonahthecodah/battleship-game/releases/tag/v1.0.1)**. The version is also shown under the game's title.
 
 ![Battleship game screenshot](docs/screenshot.png)
 
-## What the game does
+## Overview
 
-- **Place your fleet:** put your five ships (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2) on your board by tapping, turning them horizontally or vertically. You can also place them randomly. Tap a placed ship to move it.
-- **The computer hides its fleet** at random positions you can't see.
-- **Take turns firing:** tap a square in "Enemy waters" to fire. Then the computer fires back at your board.
-- **Cinematic battlefield:** an animated ocean with drifting light and waves, detailed top-down warships (each class has its own silhouette), missiles that arc across the screen, fiery explosions with sparks and smoke, water splashes with ripples for misses, and a dramatic sinking sequence when a ship is destroyed. Damaged ships keep burning.
-- **Clear markers:** misses leave a white splash marker, hits leave a glowing scorch mark, and sunk ships become wrecks outlined in red. Sunk ships are also crossed off the fleet list.
-- **Turn display and winner:** the bar at the top always shows whose turn it is and what the last shot did. When one fleet is completely sunk, the winner is announced along with your stats.
-- **Two difficulty levels:** *Easy* fires mostly at random. *Smart* works out where your ships are most likely to be, like a good human player would. It never peeks at your ships.
+A single-player Battleship game against a computer opponent on the classic 10×10 board. The whole game is one file, [`index.html`](index.html): plain HTML, CSS and JavaScript, with no frameworks, build step or server code. The animations are drawn on a canvas and the sound effects are generated in the browser.
 
-- **Tactical interface:** fleet-strength meters for both sides, a turn counter, a targeting reticle with coordinates that follows your mouse, a radar sweep over enemy waters, floating HIT/MISS labels, and a "Battle stations" intro.
-- **Sound effects:** missile launches, explosions, splashes, sinking, and victory/defeat music, all generated in the browser. Use the speaker button to mute or unmute; your choice is remembered.
-- **Cinematic victory and defeat screens** with battle statistics (shots, hits, accuracy, ships sunk and lost, battle time).
-- **Animation demo (temporary):** the "Animation demo" button opens a practice board with HIT, MISS and SINK SHIP buttons to replay each effect. It never affects the real game.
-- **Reduced motion:** if your device is set to reduce motion, the game skips missiles, shaking and sinking motion and shows results instantly.
+- **Three difficulty levels:** Beginner fires mostly at random. Intermediate attacks the squares around each hit. Advanced works out where your ships are most likely to be. None of them can see your ships.
+- **Effects:** missiles, explosions, splashes, sinking ships, sound and victory/defeat screens with battle stats. On devices set to reduce motion, results appear instantly.
+- **Accessible controls:** mouse, touch or keyboard.
 
-## Play online
+## How to play
 
-The latest release is live at https://jonahthecodah.github.io/battleship-game/. The version number is shown under the title, and `CHANGELOG.md` lists what changed in each version.
+1. **Place your fleet:** Carrier (5), Battleship (4), Cruiser (3), Submarine (3) and Destroyer (2). Choose **Horizontal** or **Vertical** (or press **R**), then tap a square on your board. Tap a placed ship to pick it up and move it, or use **Place randomly**.
+2. **Choose a difficulty** and press **Start battle**.
+3. **Fire:** tap a square in "Enemy waters". A splash means a miss, a scorch mark means a hit. When every square of a ship is hit, it sinks.
+4. **The computer fires back** after each of your shots. The bar at the top shows whose turn it is.
+5. **Win** by sinking all five enemy ships before the computer sinks yours. **New game** starts over at any time.
 
-## How to run it
+**Keyboard:** Tab to a board, move with the arrow keys, and press Enter or Space to place a ship or fire.
 
-No installation is needed. The whole game is a single file, `index.html`.
+The **Animation demo** button opens a practice board for replaying the hit, miss and sink effects. It never affects the real game.
 
-1. Download this repository: click the green **Code** button, then **Download ZIP**, then unzip it.
-2. Double-click `index.html`. The game opens in your web browser (Chrome, Safari, Edge or Firefox).
+## Quality reports
 
-To have it at a web address on your tablet, the same file can be served by any static web host.
-
-## Files
-
-| File | What it is |
+| Report | What it covers |
 | --- | --- |
-| `index.html` | The complete game: screen layout, styling and game rules in one file |
-| `tests/test_game.py` | Automated tests that play the game in a browser and check it works correctly |
-| `tests/test_qa_extra.py` | Extra automated checks: placement rules, turn guards, computer opponent, resets, phones, console errors |
-| `CHANGELOG.md` | What changed in each version |
-| `RELEASING.md` | How versions are numbered, tested, approved, tagged and published |
-| `docs/screenshot.png` | The screenshot shown above |
+| [Initial debugging report](DEBUGGING_REPORT.md) | The first QA pass (2026-11-13): code review and 154 automated browser checks. It found and fixed BUG-1 to BUG-5: effects from a finished game carrying into the next one, fireworks continuing after "Play again", missiles missing their square after a resize or rotation, the setup screen not fitting an upright tablet, and no keyboard play. |
+| [Additional QA report](DEBUG_REPORT.md) | A second QA pass (2026-11-19 and 20): ship placement, turns, the computer opponent, hit/miss/sunk, win and loss, restarting, phones and console errors, plus a recorded manual play-through. It found and fixed BUG-6 to BUG-8 in the game (two animation-demo bugs and unusable boards on phones held sideways) and BUG-9 and BUG-10 in the test tooling. It also covers the review of the release process. |
 
-## Running the automated tests (optional, for developers)
+All fixes from both reports are included in v1.0.1. [`CHANGELOG.md`](CHANGELOG.md) lists what changed in each version, and [`RELEASING.md`](RELEASING.md) describes how releases are tested, approved and deployed.
 
-The tests need Python 3 and Playwright:
+## Running it locally (optional)
+
+Download this repository (green **Code** button, then **Download ZIP**), unzip it and double-click `index.html`. Any static web host can serve the same file.
+
+## Automated tests (optional, for developers)
+
+The tests play the game in a real browser using Python 3 and Playwright:
 
 ```bash
 pip install playwright
 playwright install chromium
-python3 -m http.server 8080 &     # serve the game at http://localhost:8080
-python3 tests/test_game.py
-python3 tests/test_qa_extra.py   # extra rule, reset, phone and console-error checks
-# or run every suite in one go (starts the server if needed, keeps going after a failure):
-scripts/run_tests.sh
+scripts/run_tests.sh   # serves the game on port 8080 and runs every suite
 ```
 
-The tests check the placement rules, turn order, hits, misses, sunk ships, the winner announcement, the computer opponent (600 simulated games), that the layout fits common tablet and phone screens, that every animation actually plays (missiles, explosions, splashes, sinking), that the demo never changes the real game, animation smoothness, and the reduced-motion mode.
+You can also run the suites one at a time against `python3 -m http.server 8080`:
+
+| Suite | Checks |
+| --- | --- |
+| `tests/test_game.py` | Placement, turns, hits, misses, sinking, winning and losing, the computer opponent (300 simulated games per level), layout on tablets and phones, animations, the demo, smoothness, reduced motion and keyboard play |
+| `tests/test_qa_extra.py` | Edge and overlap placement, turn guards, the computer opponent (400 simulated games per level), resets, phone layouts, the version label and console errors |
+
+GitHub Actions runs both suites on every pull request.
