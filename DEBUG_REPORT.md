@@ -1,12 +1,13 @@
 # Battleship – Debug Report
 
-**Date:** 2026-11-19 (BUG-8 and BUG-9 added 2026-11-20) · **Tester:** Devin
+**Date:** 2026-11-19 (BUG-8 to BUG-10 added 2026-11-20) · **Tester:** Devin
 **Build tested:** `main` at `e94d9a0` (before fixes) and the fix branch (after fixes).
 **Environment:** Ubuntu VM, Chrome for Testing 156, run headless through Playwright (Python) and as a normal Chrome window for the manual play-through. Phones and tablets were emulated (touch, screen size). No physical devices were used.
 
-This report covers only what was actually run. It follows the earlier QA pass in `DEBUGGING_REPORT.md`, whose five bugs (BUG-1 to BUG-5) were already fixed. The new bugs here are numbered BUG-6 to BUG-9.
+This report covers only what was actually run. It follows the earlier QA pass in `DEBUGGING_REPORT.md`, whose five bugs (BUG-1 to BUG-5) were already fixed. The new bugs here are numbered BUG-6 to BUG-10.
 - BUG-8 was found afterwards, in a follow-up check of how closing the demo during its sinking animation is cleaned up.
 - BUG-9 is in the test tooling, not the game. It was found while reviewing the new release process (section 5).
+- BUG-10 is also in the test tooling. It made CI fail at random, and first showed up on GitHub after the BUG-9 push.
 
 ---
 
@@ -38,6 +39,7 @@ This report covers only what was actually run. It follows the earlier QA pass in
 | BUG-7 | Phones held sideways: the battle boards shrink to almost nothing (0 px at 640×360), and the New Game button is cut off | Medium | **Fixed & verified** |
 | BUG-8 | Animation demo: closing it during the sinking animation leaves that animation running: the ship stays stuck as "sinking", and its leftover explosions shake the real game | Low | **Fixed & verified** |
 | BUG-9 | Test tooling: failures in `tests/test_game.py` didn't fail CI, and a failure there stopped `tests/test_qa_extra.py` from running | Medium (CI could pass a broken release) | **Fixed & verified** |
+| BUG-10 | Test tooling: the defeat test in `tests/test_game.py` could run out of shots and time out | Low (CI failed at random) | **Fixed & verified** |
 
 ### BUG-6: Demo close/reopen error
 - **Steps:**
@@ -99,6 +101,13 @@ This is in the test tooling, not the game.
 - **Verified:**
   - On the same copy with the forced failure: both suites ran in full. That was 154 PASS lines plus 93 from the extra suite, a copy made before the newest version-label checks were added. Output ended with `Failed suites: tests/test_game.py`, exit code 1.
   - On the real branch: both suites pass, exit code 0.
+
+### BUG-10: The defeat test could run out of shots
+This is in the test tooling, not the game.
+- **Actual:** the "lose" part of `tests/test_game.py` fired only at the 83 empty enemy squares and then waited for the defeat screen. The computer (Intermediate) sometimes needs more than 83 shots (up to 98 in the simulations), so the player ran out of shots, the defeat screen never came, and the test crashed after 30 s. This happened on GitHub after the push for BUG-9.
+- **Reproduced:** ran the same loop at Beginner, where the computer averages 84 shots. Both games timed out after 83 shots, with the computer on 15 of 17 hits.
+- **Fix:** after the empty squares, the test keeps firing at enemy ship squares, leaving one square so the player never wins. The player now has 99 shots; at Intermediate, which this test uses, the computer never needed more than 98 in the simulations.
+- **Verified:** with the fix, a Beginner game that needed 84 shots ended in defeat as expected, as did 2 Intermediate games. The full run passes (section 3).
 
 ## 3. Verification results
 

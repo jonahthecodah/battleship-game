@@ -174,6 +174,8 @@ with sync_playwright() as p:
     pg.click('#random-btn'); pg.click('#start-btn')
     enemy = {tuple(c) for s in S('window.__battleship.state.enemy.ships.map(s=>s.cells)') for c in s}
     misses = [(r, c) for r in range(10) for c in range(10) if (r, c) not in enemy]
+    # The AI can need more shots than there are misses; then keep firing at enemy ships, leaving one square so we never win.
+    misses += sorted(enemy)[:-1]
     shotsTaken = 0
     for (r, c) in misses:
         pg.wait_for_function('(window.__battleship.state.turn === "player" && !window.__battleship.state.busy) || window.__battleship.state.phase === "over"', timeout=15000)
