@@ -322,6 +322,17 @@ with sync_playwright() as p:
     check(not d.evaluate('window.__battleship.demo.busy'), 'BUG-6: demo buttons usable again afterwards')
     d.close()
 
+    # ---------- 7. Version label ----------
+    for (w, h) in [(1280, 800), (1024, 768), (390, 844)]:
+        v = watch(b.new_page(viewport={'width': w, 'height': h}))
+        v.goto(URL)
+        info = v.evaluate('''() => { const m = document.querySelector('meta[name="app-version"]').content, el = document.getElementById("app-version");
+          const r = el.getBoundingClientRect(), hdr = document.querySelector("header").getBoundingClientRect();
+          return { meta: m, label: el.textContent, shown: r.width > 0, inHeader: r.bottom <= hdr.bottom + 1 && r.right <= innerWidth }; }''')
+        check(info['label'] == 'v' + info['meta'], f"{w}x{h}: version label {info['label']} matches index.html version {info['meta']}")
+        check(not info['shown'] or info['inHeader'], f'{w}x{h}: version label stays inside the header ({info})')
+        v.close()
+
     # ---------- 6. Animation demo: closing during the sinking animation ----------
     d = watch(b.new_page(viewport={'width': 1280, 'height': 800}))
     d.goto(URL)

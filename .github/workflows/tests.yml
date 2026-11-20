@@ -1,0 +1,24 @@
+name: Tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright
+        run: pip install playwright && python -m playwright install --with-deps chromium
+      - name: Check version
+        run: scripts/release.sh check
+      - name: Run browser tests
+        run: |
+          python3 -m http.server 8080 > /dev/null 2>&1 &
+          sleep 1
+          python3 tests/test_game.py
+          python3 tests/test_qa_extra.py

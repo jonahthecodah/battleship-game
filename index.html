@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#060e1a">
+<meta name="app-version" content="1.0.1">
 <title>Battleship</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230ea5e9'/%3E%3Cpath d='M10 36h44l-6 10H16z' fill='white'/%3E%3C/svg%3E">
 <style>
@@ -52,7 +53,8 @@
   }
   .brand { display: flex; align-items: center; gap: 12px; }
   .brand svg { width: 38px; height: 38px; filter: drop-shadow(0 0 8px rgba(63, 208, 255, .35)); }
-  .brand-text { display: flex; flex-direction: column; line-height: 1; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1; position: relative; }
+  .app-version { position: absolute; top: 100%; left: 0; margin-top: 4px; font: 600 .55rem/1 var(--mono); letter-spacing: .2em; color: var(--cyan); opacity: .4; white-space: nowrap; pointer-events: none; }
   h1 {
     margin: 0; font: 700 1.5rem/1 var(--display); letter-spacing: .32em; text-transform: uppercase;
     background: linear-gradient(180deg, #f4f9ff 20%, #9fb6cc 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -680,7 +682,7 @@
   <header>
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#0ea5e9" opacity=".18"/><path d="M10 38h44l-6 10H16z" fill="#c9d4e0"/><rect x="24" y="28" width="16" height="10" rx="2" fill="#9aa9bb"/><rect x="30" y="18" width="3" height="10" fill="#9aa9bb"/><path d="M6 50c4 0 4 3 8 3s4-3 8-3 4 3 8 3 4-3 8-3 4 3 8 3 4-3 8-3 4 3 8 3" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-      <div class="brand-text"><h1>Battleship</h1><span class="brand-sub">Naval command</span></div>
+      <div class="brand-text"><h1>Battleship</h1><span class="brand-sub">Naval command</span><span class="app-version" id="app-version" title="Game version">v1.0.1</span></div>
     </div>
     <div class="header-actions">
       <button class="btn icon-btn" id="sound-btn" aria-pressed="false" aria-label="Mute sound" title="Mute / unmute sound">
