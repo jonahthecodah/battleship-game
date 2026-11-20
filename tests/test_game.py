@@ -415,3 +415,4 @@ with sync_playwright() as p:
     check(not errors, f'No JavaScript errors {errors}')
     b.close()
 print('\nFAILURES:', fails if fails else 'none')
+sys.exit(1 if fails else 0)
