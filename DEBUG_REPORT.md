@@ -1,10 +1,12 @@
 # Battleship – Debug Report
 
-**Date:** 2026-11-19 (BUG-8 added 2026-11-20) · **Tester:** Devin
+**Date:** 2026-11-19 (BUG-8 and BUG-9 added 2026-11-20) · **Tester:** Devin
 **Build tested:** `main` at `e94d9a0` (before fixes) and the fix branch (after fixes).
 **Environment:** Ubuntu VM, Chrome for Testing 156, run headless through Playwright (Python) and as a normal Chrome window for the manual play-through. Phones and tablets were emulated (touch, screen size). No physical devices were used.
 
-This report covers only what was actually run. It follows the earlier QA pass in `DEBUGGING_REPORT.md`, whose five bugs (BUG-1 to BUG-5) were already fixed. The new bugs here are numbered BUG-6 to BUG-8. BUG-8 was found afterwards, in a follow-up check of how closing the demo during its sinking animation is cleaned up.
+This report covers only what was actually run. It follows the earlier QA pass in `DEBUGGING_REPORT.md`, whose five bugs (BUG-1 to BUG-5) were already fixed. The new bugs here are numbered BUG-6 to BUG-9.
+- BUG-8 was found afterwards, in a follow-up check of how closing the demo during its sinking animation is cleaned up.
+- BUG-9 is in the test tooling, not the game. It was found while reviewing the new release process (section 5).
 
 ---
 
@@ -23,7 +25,8 @@ This report covers only what was actually run. It follows the earlier QA pass in
 
 **Automated tests**
 - `tests/test_game.py`: the existing suite, 154 checks.
-- `tests/test_qa_extra.py`: new in this pass, 87 checks (80 at first, plus 7 for BUG-8).
+- `tests/test_qa_extra.py`: new in this pass, 99 checks (80 at first, plus 7 for BUG-8 and 12 for the version label).
+- `scripts/run_tests.sh`: runs both suites, as CI does.
 
 **Manual testing:** a recorded play-through in a real Chrome window, using mouse clicks and device emulation.
 
@@ -34,6 +37,7 @@ This report covers only what was actually run. It follows the earlier QA pass in
 | BUG-6 | Animation demo: closing and reopening it while a missile is in the air causes a JavaScript error | Low | **Fixed & verified** |
 | BUG-7 | Phones held sideways: the battle boards shrink to almost nothing (0 px at 640×360), and the New Game button is cut off | Medium | **Fixed & verified** |
 | BUG-8 | Animation demo: closing it during the sinking animation leaves that animation running: the ship stays stuck as "sinking", and its leftover explosions shake the real game | Low | **Fixed & verified** |
+| BUG-9 | Test tooling: failures in `tests/test_game.py` didn't fail CI, and a failure there stopped `tests/test_qa_extra.py` from running | Medium (CI could pass a broken release) | **Fixed & verified** |
 
 ### BUG-6: Demo close/reopen error
 - **Steps:**
@@ -80,6 +84,22 @@ This report covers only what was actually run. It follows the earlier QA pass in
   - `closeDemo()` now clears `demo.sinking` and `demo.aim`, clears the demo board's effects, stops any screen shake already in progress (`FX.stopShake()`) and hides the demo banner.
   - The game's own effects and sounds are unchanged.
 
+### BUG-9: Test failures could pass CI or hide other failures
+This is in the test tooling, not the game.
+- **Actual:**
+  1. `tests/test_game.py` printed `FAIL` lines but always exited with code 0, so CI stayed green whatever failed. Devin Review found this.
+  2. Once (1) was fixed, CI ran both suites as one shell step, and GitHub runs it with `bash -e`. Any failure in `tests/test_game.py` stopped the step, so `tests/test_qa_extra.py` never ran, and its failures went unreported.
+- **Reproduced (2):**
+  - Made a copy with one forced failing check at the end of `tests/test_game.py`, then ran the old CI step exactly as GitHub does (`bash --noprofile --norc -eo pipefail`).
+  - Result: 154 PASS lines, 1 FAIL, exit code 1, and no output at all from `tests/test_qa_extra.py`.
+- **Fix:**
+  - `tests/test_game.py` now ends with `sys.exit(1 if fails else 0)`, matching `tests/test_qa_extra.py`.
+  - The new `scripts/run_tests.sh` starts the local server if one isn't running, then runs every suite even if an earlier one fails. It lists the failed suites and exits 1 if any failed.
+  - CI (`.github/workflows/tests.yml`) runs that script, and it works the same way locally.
+- **Verified:**
+  - On the same copy with the forced failure: both suites ran in full. That was 154 PASS lines plus 93 from the extra suite, a copy made before the newest version-label checks were added. Output ended with `Failed suites: tests/test_game.py`, exit code 1.
+  - On the real branch: both suites pass, exit code 0.
+
 ## 3. Verification results
 
 | Check | Before fix | After fix |
@@ -92,6 +112,8 @@ This report covers only what was actually run. It follows the earlier QA pass in
 | Enemy board width at 640×360 / 844×390 | 0 px / 109 px | 227 px / 255 px (headless run); 250 px / 280 px (manual run) |
 | Demo close/reopen, 12–15 tries | 5 console errors | 0 errors |
 | Console errors anywhere in both suites | Only the BUG-6 error | None |
+| Forced failure in `tests/test_game.py` (BUG-9) | CI step stopped and `test_qa_extra.py` never ran | Both suites ran, the failure was reported, exit code 1 |
+| Full run on this branch (`scripts/run_tests.sh`) | n/a | **154 / 154 and 99 / 99 pass**, exit code 0 |
 
 The new suite's checks for each bug failed on the build without that bug's fix and pass on the fixed build. The BUG-8 test waits until the ship is actually sinking (fully hit, demo still busy) before closing the demo, so it covers an interruption during the sinking animation itself, not just during the missile's flight.
 
@@ -131,3 +153,14 @@ The new suite's checks for each bug failed on the build without that bug's fix a
 - **Old demo missile:** if you close the demo mid-flight and reopen it, the old missile can still be seen finishing its flight, but it no longer changes anything.
 - **Demo sinking sound:** if you close the demo right after a sink starts, the short sinking sound (under 1 s) still finishes playing. It isn't cut off, because doing so would also stop any game sounds playing at the same time.
 - **From the earlier report, still open:** screen readers aren't told about hits and sinks as they happen. The animation demo is still marked temporary.
+
+## 5. Release-process review findings (2026-11-20)
+
+Devin Review raised four findings on the release changes. Each one was checked:
+
+| Finding | Verdict | What was done |
+|---|---|---|
+| A failure in the first suite skips the extra QA suite | **Real: BUG-9** | Fixed, see above. |
+| Unversioned merges go live immediately | **Real gap in the process** (not a game defect) | GitHub Pages deploys every merge to `main`, so a pull request that changed the game without raising its version would go live under the old version number. `RELEASING.md` now says clearly that merging deploys, and that tags and GitHub Releases only track versions and hold release notes. CI's new `scripts/release.sh bumped` step fails any pull request that changes `index.html` without raising the version. Checked locally: it passes this branch (none → 1.0.1), passes an unchanged `index.html`, and compares versions correctly (1.0.10 > 1.0.9; 1.0.1 is not higher than 1.0.1). |
+| The version label is missing on narrow phones | **Intended, not a defect** | Below 461 px the existing header already hides the whole title block (`.brand-text`, with the "Battleship" title) to leave room for the sound, demo and New game buttons. The label belongs to that block, so it hides with the title, and showing it would mean crowding those buttons or changing the header design. The version is still in the page as `<meta name="app-version">`. The test now states this: at 1280, 1024 and 540 px it requires the label to be visible inside the header; at 390 px it requires it to be hidden. |
+| Closing the demo cuts off a battle shake | **Real, but not a meaningful problem; no change** | Reproduced 3 times: fire a hit and open the demo while the missile is in flight. The hit lands while the demo is open, and its shake starts while the battle screen is hidden (`body.demo-open main { visibility: hidden }`). Closing the demo about 190 ms later ends the shake, so the remaining ~0.45 s is never seen. This only affects a shake that started out of view. Shots, turns and results are unchanged, and the shakes from the sink explosions that follow still play. Keeping the shake running would let a demo shake leak into the game again (BUG-8). |
