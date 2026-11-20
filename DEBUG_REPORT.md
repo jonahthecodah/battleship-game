@@ -23,7 +23,7 @@ This report covers only what was actually run. It follows the earlier QA pass in
 
 **Automated tests**
 - `tests/test_game.py`: the existing suite, 154 checks.
-- `tests/test_qa_extra.py`: new in this pass, 86 checks (80 at first, plus 6 for BUG-8).
+- `tests/test_qa_extra.py`: new in this pass, 87 checks (80 at first, plus 7 for BUG-8).
 
 **Manual testing:** a recorded play-through in a real Chrome window, using mouse clicks and device emulation.
 
@@ -65,7 +65,8 @@ This report covers only what was actually run. It follows the earlier QA pass in
   4. Reopen the demo and press **HIT**.
 - **Expected:** closing the demo stops its effects. The sunk ship shows as sunk when you reopen it, and the real game is unaffected.
 - **Actual:**
-  - Within 2 s of starting the battle, the game screen shook 1–2 times. With no demo involved, it doesn't shake at all.
+  - The screen shake that the sink starts kept going for up to 0.6 s after the demo closed.
+  - Within 2 s of starting the battle, the game screen shook 1–2 more times. With no demo involved, it doesn't shake at all.
   - The demo's explosion particles kept building up on the hidden demo board (191 → 331).
   - On reopening, the ship and its "destroyed" banner replayed their animations. The ship stayed stuck as "sinking" instead of "sunk", even after later demo shots.
   - No JavaScript error occurred, and the game's shots, turns and rules weren't changed.
@@ -76,7 +77,7 @@ This report covers only what was actually run. It follows the earlier QA pass in
 - **Fix** (`index.html`):
   - Effect timers can now be tied to a board, and the new `FX.clearLayer(layer)` cancels one board's timers and particles without touching the others.
   - `FX.sink` ties its explosion timers to its board.
-  - `closeDemo()` now clears `demo.sinking` and `demo.aim`, clears the demo board's effects and hides the demo banner.
+  - `closeDemo()` now clears `demo.sinking` and `demo.aim`, clears the demo board's effects, stops any screen shake already in progress (`FX.stopShake()`) and hides the demo banner.
   - The game's own effects and sounds are unchanged.
 
 ## 3. Verification results
@@ -85,8 +86,9 @@ This report covers only what was actually run. It follows the earlier QA pass in
 |---|---|---|
 | `tests/test_game.py` (existing suite) | 154 / 154 pass | 154 / 154 pass |
 | `tests/test_qa_extra.py` (new suite, first 80 checks) | 74 / 80 pass: 6 failures, all BUG-6 or BUG-7 | **80 / 80 pass** |
-| `tests/test_qa_extra.py` with the 6 BUG-8 checks, run on the build with only BUG-6/BUG-7 fixed and then with the BUG-8 fix | 82 / 86 pass: 4 failures, all BUG-8 | **86 / 86 pass** |
-| Demo closed mid-sinking, then a battle started | Game screen shook 1–2 times; ship stuck "sinking" | 0 shakes; ship shows as sunk |
+| `tests/test_qa_extra.py` with the first 6 BUG-8 checks, on the build with only BUG-6 and BUG-7 fixed | 82 / 86 pass: 4 failures, all BUG-8 | 86 / 86 pass |
+| `tests/test_qa_extra.py` with all 7 BUG-8 checks. A second review found that a shake already in progress kept going after the demo closed. The "before" column is the first BUG-8 fix, without `FX.stopShake()`. | 86 / 87 pass: the only failure is the in-progress shake | **87 / 87 pass** |
+| Demo closed mid-sinking, then a battle started | Shake kept going after close; the game screen shook 1–2 more times; ship stuck "sinking" | Shake stops on close; 0 more shakes; ship shows as sunk |
 | Enemy board width at 640×360 / 844×390 | 0 px / 109 px | 227 px / 255 px (headless run); 250 px / 280 px (manual run) |
 | Demo close/reopen, 12–15 tries | 5 console errors | 0 errors |
 | Console errors anywhere in both suites | Only the BUG-6 error | None |

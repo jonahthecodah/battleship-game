@@ -334,7 +334,7 @@ with sync_playwright() as p:
     mid = d.evaluate('''() => { const D = window.__battleship.demo, s = D.sinking;
       return { name: s.name, sunk: s.hits >= s.size, busy: D.busy }; }''')
     d.click('#demo-close')
-    closed = d.evaluate('({ sinking: window.__battleship.demo.sinking, parts: window.__battleship.fx.stats().find(s => s.board === "demo-board").parts })')
+    closed = d.evaluate('({ sinking: window.__battleship.demo.sinking, parts: window.__battleship.fx.stats().find(s => s.board === "demo-board").parts, shaking: /shake/.test(document.getElementById("main").className) })')
     d.evaluate('window.__shakes = 0')
     d.click('#random-btn'); d.click('#start-btn')
     d.wait_for_timeout(2000)
@@ -349,6 +349,7 @@ with sync_playwright() as p:
     d.click('#demo-close')
     check(mid['sunk'] and mid['busy'], f"BUG-8: demo closed while the {mid['name']} was mid-sinking")
     check(closed['sinking'] is None and closed['parts'] == 0, f'BUG-8: closing clears the sinking ship and demo effects ({closed})')
+    check(not closed['shaking'], 'BUG-8: the shake started by the demo sink stops when the demo closes')
     check(game['shakes'] == 0, f"BUG-8: no leftover demo explosions shake the real game ({game['shakes']} shakes)")
     check(game['phase'] == 'battle' and game['enemyShots'] == 0 and game['playerShots'] == 0, f'BUG-8: new game starts clean ({game})')
     check(not banner, 'BUG-8: demo sink banner does not replay on reopen')

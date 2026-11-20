@@ -1501,6 +1501,10 @@
       clearTimeout(shakeTimer);
       shakeTimer = setTimeout(() => el.classList.remove("shake-s", "shake-l"), 650);
     }
+    function stopShake() {
+      clearTimeout(shakeTimer);
+      document.getElementById("main").classList.remove("shake-s", "shake-l");
+    }
 
     return {
       reduced, SP,
@@ -1518,6 +1522,7 @@
         L.timers.forEach(id => { clearTimeout(id); timers.delete(id); }); L.timers.clear();
         L.parts = []; L.missiles = [];
       },
+      stopShake,
       setEmitters(L, list) {
         const next = new Map();
         for (const e of list) {
@@ -2173,6 +2178,7 @@
     demo.run++;
     demo.sinking = null; demo.aim = null;
     FX.clearLayer(boards.demo.layer);
+    FX.stopShake();
     boards.demo.banner.classList.remove("show");
     document.body.classList.remove("demo-open");
     $("demo").classList.add("hidden");
