@@ -1243,10 +1243,13 @@
     const layers = [];
     let globalLayer = null;
     const timers = new Set();
-    const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); };
+    const later = (fn, ms, L) => {
+      const id = setTimeout(() => { timers.delete(id); if (L) L.timers.delete(id); fn(); }, ms);
+      timers.add(id); if (L) L.timers.add(id);
+    };
 
     function makeLayer(canvas, field) {
-      const L = { canvas, ctx: canvas.getContext("2d"), field, margin: 0.15, parts: [], emitters: new Map(), missiles: [], drawn: false };
+      const L = { canvas, ctx: canvas.getContext("2d"), field, margin: 0.15, parts: [], emitters: new Map(), missiles: [], timers: new Set(), drawn: false };
       layers.push(L);
       return L;
     }
@@ -1508,7 +1511,12 @@
       makeLayer,
       clearAll() {
         timers.forEach(clearTimeout); timers.clear();
-        for (const L of layers) { L.parts = []; L.missiles = []; }
+        for (const L of layers) { L.parts = []; L.missiles = []; L.timers.clear(); }
+      },
+      // Stop one board's pending and running effects, leaving the rest untouched
+      clearLayer(L) {
+        L.timers.forEach(id => { clearTimeout(id); timers.delete(id); }); L.timers.clear();
+        L.parts = []; L.missiles = [];
       },
       setEmitters(L, list) {
         const next = new Map();
@@ -1556,7 +1564,7 @@
         ship.cells.forEach(([sr, sc], i) => later(() => {
           explosion(L, sc + .5 + rand(-.15, .15), sr + .5 + rand(-.15, .15), .75);
           if (i === ship.cells.length - 1) shake("s");
-        }, 180 + i * 150));
+        }, 180 + i * 150, L));
         sinkDebris(L, ship.cells);
         return wait(2700);
       },
@@ -2163,6 +2171,9 @@
     state.demoOpen = false;
     demo.busy = false;
     demo.run++;
+    demo.sinking = null; demo.aim = null;
+    FX.clearLayer(boards.demo.layer);
+    boards.demo.banner.classList.remove("show");
     document.body.classList.remove("demo-open");
     $("demo").classList.add("hidden");
   }

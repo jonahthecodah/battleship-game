@@ -322,6 +322,40 @@ with sync_playwright() as p:
     check(not d.evaluate('window.__battleship.demo.busy'), 'BUG-6: demo buttons usable again afterwards')
     d.close()
 
+    # ---------- 6. Animation demo: closing during the sinking animation ----------
+    d = watch(b.new_page(viewport={'width': 1280, 'height': 800}))
+    d.goto(URL)
+    d.evaluate('''() => { window.__shakes = 0; const m = document.getElementById("main");
+      new MutationObserver(() => { if (/shake/.test(m.className)) window.__shakes++; }).observe(m, { attributes: true, attributeFilter: ["class"] }); }''')
+    d.click('#demo-btn'); d.click('#demo-reset')
+    d.click('[data-demo="sink"]')
+    d.wait_for_function('window.__battleship.demo.sinking !== null', timeout=8000)
+    d.wait_for_timeout(150)
+    mid = d.evaluate('''() => { const D = window.__battleship.demo, s = D.sinking;
+      return { name: s.name, sunk: s.hits >= s.size, busy: D.busy }; }''')
+    d.click('#demo-close')
+    closed = d.evaluate('({ sinking: window.__battleship.demo.sinking, parts: window.__battleship.fx.stats().find(s => s.board === "demo-board").parts })')
+    d.evaluate('window.__shakes = 0')
+    d.click('#random-btn'); d.click('#start-btn')
+    d.wait_for_timeout(2000)
+    game = d.evaluate('''() => { const S = window.__battleship.state;
+      return { shakes: window.__shakes, phase: S.phase, enemyShots: S.enemy.shots.flat().filter(Boolean).length,
+        playerShots: S.player.shots.flat().filter(Boolean).length }; }''')
+    d.click('#demo-btn')
+    reopen = d.evaluate(f'''[...document.querySelectorAll("#demo-board .ship-el")].map(e => e.className)''')
+    banner = d.evaluate('document.querySelector("#demo-board .banner").classList.contains("show")')
+    d.click('[data-demo="hit"]'); d.wait_for_function('!window.__battleship.demo.busy', timeout=8000)
+    later_cls = d.evaluate('[...document.querySelectorAll("#demo-board .ship-el")].map(e => e.className)')
+    d.click('#demo-close')
+    check(mid['sunk'] and mid['busy'], f"BUG-8: demo closed while the {mid['name']} was mid-sinking")
+    check(closed['sinking'] is None and closed['parts'] == 0, f'BUG-8: closing clears the sinking ship and demo effects ({closed})')
+    check(game['shakes'] == 0, f"BUG-8: no leftover demo explosions shake the real game ({game['shakes']} shakes)")
+    check(game['phase'] == 'battle' and game['enemyShots'] == 0 and game['playerShots'] == 0, f'BUG-8: new game starts clean ({game})')
+    check(not banner, 'BUG-8: demo sink banner does not replay on reopen')
+    check(sum('sinking' in c for c in reopen + later_cls) == 0 and sum('sunk' in c for c in reopen) == 1 and sum('sunk' in c for c in later_cls) == 1,
+          f'BUG-8: after reopening, the sunk ship shows as sunk, not stuck sinking ({reopen} / {later_cls})')
+    d.close()
+
     check(not errors, f'No JavaScript errors or console errors anywhere ({errors[:5]})')
     b.close()
 
